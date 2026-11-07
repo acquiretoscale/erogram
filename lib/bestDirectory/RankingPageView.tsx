@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import BestDirectoryRankCard from './BestDirectoryRankCard';
 import type { DirectoryPageConfig } from './config';
 import type { DirectoryRankItem } from './types';
@@ -94,6 +95,8 @@ export default function RankingPageView({
           </div>
         ) : null}
       </main>
+
+      <Footer />
     </div>
   );
 }

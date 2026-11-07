@@ -21,6 +21,8 @@ import VaultTeaserFeed from '@/app/groups/VaultTeaserFeed';
 import { useTranslation, useLocalePath } from '@/lib/i18n';
 import { compressImage } from '@/lib/utils/compressImage';
 import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
+import JoinGroupFeaturedOfBlock from '@/app/components/JoinGroupFeaturedOfBlock';
+import type { HomeFeaturedOfCreator } from '@/lib/explore/homeFeaturedOfCreator';
 
 interface Entity {
   _id: string;
@@ -59,6 +61,7 @@ interface ButtonConfig {
   button3: { text: string; link: string; color: string };
 }
 
+/** Legacy server prop — group join pages use fixed premium CTA instead of join-cta campaigns. */
 interface JoinCtaCampaign {
   _id: string;
   destinationUrl: string;
@@ -66,41 +69,48 @@ interface JoinCtaCampaign {
   buttonText: string;
 }
 
-function groupsCtaLabel(campaign: JoinCtaCampaign) {
-  return (campaign.description || campaign.buttonText || '').trim();
-}
+const JOIN_PREMIUM_GOLD_BG =
+  'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)';
+const JOIN_PREMIUM_GOLD_SHADOW =
+  '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)';
 
-function GroupsCtaButton({ campaign }: { campaign: JoinCtaCampaign }) {
-  const label = groupsCtaLabel(campaign);
-  if (!campaign.destinationUrl || !label) return null;
+function JoinPremiumCtaButton() {
+  const { t } = useTranslation();
+  const lp = useLocalePath();
   return (
-    <a
-      href={campaign.destinationUrl}
-      target="_blank"
-      rel="sponsored noopener noreferrer"
-      onClick={() => { void trackCampaignClick(campaign._id, 'join-cta'); }}
-      className="w-full h-full flex items-center justify-center px-3 sm:px-8 py-5 rounded-2xl bg-[#e0245e] hover:bg-[#c81e51] text-white font-bold text-xl text-center leading-tight transition-colors"
+    <Link
+      href={lp('/premium')}
+      className="block w-full flex flex-col items-center justify-center gap-1.5 px-3 sm:px-6 py-4 sm:py-5 rounded-2xl transition-all hover:brightness-105 active:scale-[0.99]"
+      style={{ background: JOIN_PREMIUM_GOLD_BG, boxShadow: JOIN_PREMIUM_GOLD_SHADOW }}
     >
-      {label}
-    </a>
+      <span className="inline-flex items-center justify-center gap-1.5 text-sm sm:text-base font-black text-[#1a0f00] tracking-tight uppercase text-center leading-tight">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
+          <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+        </svg>
+        {t('groups.premiumCtaTitle', 'UNLOCK UNLISTED PREMIUM TG GROUPS')}
+      </span>
+      <span className="text-[10px] sm:text-xs font-semibold text-[#3d2800]/90 leading-snug text-center px-2 max-w-md">
+        {t(
+          'groups.joinPremiumCtaSubtitle',
+          'Stop wasting your time with expired and spammy groups. Unlock instantly 4000+ unlisted Premium TG groups.',
+        )}
+      </span>
+    </Link>
   );
 }
 
 function JoinWithGroupsCta({
   show,
-  campaign,
   children,
 }: {
   show: boolean;
-  campaign: JoinCtaCampaign | null;
   children: ReactNode;
 }) {
-  const cta = show && campaign && campaign.destinationUrl && groupsCtaLabel(campaign) ? campaign : null;
-  if (!cta) return <>{children}</>;
+  if (!show) return <>{children}</>;
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3 items-stretch">
-      <div className="min-w-0">{children}</div>
-      <GroupsCtaButton campaign={cta} />
+    <div className="flex flex-col gap-3 sm:gap-4 w-full relative z-10">
+      <div className="w-full min-w-0">{children}</div>
+      <JoinPremiumCtaButton />
     </div>
   );
 }
@@ -156,6 +166,7 @@ interface JoinClientProps {
   featuredCreators?: FeaturedCreator[];
   botStats?: BotStatsData;
   rankingCoverImages?: Record<string, string>;
+  joinFeaturedOfCreator?: HomeFeaturedOfCreator | null;
 }
 
 interface PopupAdvert {
@@ -267,7 +278,7 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], rankingCoverImages = {} }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], rankingCoverImages = {}, joinFeaturedOfCreator = null }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -309,7 +320,6 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
   // 5 min stale. The browser refreshes them right after load so every visitor gets
   // the current campaigns (rotation, new advertisers, ended campaigns).
   const [liveTopBanners, setLiveTopBanners] = useState(topBannerCampaigns);
-  const [liveJoinCta, setLiveJoinCta] = useState(joinCtaCampaign);
   const [viewCount, setViewCount] = useState(entity.views || 0);
 
   useEffect(() => {
@@ -322,15 +332,12 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       .then(() => setViewCount((v) => v + 1))
       .catch(() => {});
 
-    Promise.all([
-      getActiveCampaigns('top-banner', { page: 'join' }).catch(() => []),
-      getActiveCampaigns('join-cta').catch(() => []),
-    ]).then(([banners, joinCtas]) => {
-      const b = banners as any[];
-      if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);
-      const join = (joinCtas as JoinCtaCampaign[])[0];
-      setLiveJoinCta(join?.destinationUrl ? join : null);
-    }).catch(() => {});
+    getActiveCampaigns('top-banner', { page: 'join' })
+      .catch(() => [] as any[])
+      .then((banners) => {
+        const b = banners as any[];
+        if (b.length > 0 && b[0].creative) setLiveTopBanners(b as any);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity._id]);
 
@@ -983,7 +990,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 <h2 className="text-2xl font-bold text-white relative z-10 mb-2">{t('slug.readyToJoin')}</h2>
                 <p className="text-gray-400 mb-6 relative z-10">{t('slug.clickToAccess')}</p>
 
-                <JoinWithGroupsCta show={type === 'group'} campaign={liveJoinCta}>
+                <JoinWithGroupsCta show={type === 'group'}>
                 {!userInteracted ? (
                   <button
                     onClick={handleStartCountdown}
@@ -1048,6 +1055,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                   </div>
                 )}
                 </JoinWithGroupsCta>
+
+                {type === 'group' && joinFeaturedOfCreator ? (
+                  <JoinGroupFeaturedOfBlock creator={joinFeaturedOfCreator} />
+                ) : null}
 
               </div>
               )}

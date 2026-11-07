@@ -771,6 +771,20 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     sourceUrl: 'https://h5.aipornvideo.fun/',
   },
   {
+    slug: slugify('AI Porn Generator', 'MuseHer'),
+    name: 'MuseHer',
+    category: 'AI Porn Generator',
+    vendor: 'Museher.com',
+    description:
+      'MuseHer is a browser-based AI portrait and video studio for adult muse creation. Users pick an official muse or upload a consenting adult photo, describe the scene or choose from nearly 100 templates, then generate NSFW photos and short 5-second videos from the results. Creating a character is free; photos and clips use a credit wallet with automatic refunds on failed generations.\n\nPhotos typically finish in about four minutes. Five-second videos cost 40 credits and land in roughly three minutes, with optional sound after tap or hover. Batch photo sets get a small discount at 2–10 images. Credit packs are one-time purchases with no auto-renewal, starting at $2.99 for 60 credits through $19.99 for 500 credits. Everything stays in a private account unless the user saves it locally.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/museher-ai-porn-generator.webp',
+    tags: ['ai porn generator', 'ai video generator', 'ai nsfw image generator', 'ai girl generator', 'photo to video', 'text-to-image'],
+    subscription: 'Freemium & Paid',
+    payment: ['Credit Cards'],
+    tryNowUrl: 'https://www.museher.com/en/',
+    sourceUrl: 'https://www.museher.com/en/',
+  },
+  {
     slug: slugify('AI Image', 'Seduced'),
     name: 'Seduced',
     category: 'AI Porn Generator',

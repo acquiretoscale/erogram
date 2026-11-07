@@ -81,9 +81,11 @@ function ExploreBookmark({ siteKey }: { siteKey: string }) {
 export default function ExploreSiteListingClient({
   listing,
   alternatives,
+  visitRel = 'nofollow noopener noreferrer',
 }: {
   listing: ExploreSiteListing;
   alternatives: ExploreSiteListingBase[];
+  visitRel?: string;
 }) {
   const rootSlug = exploreListingRootSlug(listing.slug, listing.categorySlug);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -228,7 +230,7 @@ export default function ExploreSiteListingClient({
               <a
                 href={externalUrl}
                 target="_blank"
-                rel="nofollow noopener noreferrer"
+                rel={visitRel}
                 className="mt-4 flex w-full items-center justify-center rounded-xl py-4 text-base font-bold text-white hover:opacity-90 transition-opacity"
                 style={{ background: ACCENT }}
               >
@@ -336,7 +338,7 @@ export default function ExploreSiteListingClient({
             <a
               href={externalUrl}
               target="_blank"
-              rel="nofollow noopener noreferrer"
+              rel={visitRel}
               className="mb-10 flex w-full items-center justify-center rounded-xl py-4 text-lg font-bold text-white hover:opacity-90 transition-opacity"
               style={{ background: ACCENT }}
             >

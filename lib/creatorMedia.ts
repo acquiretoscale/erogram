@@ -4,6 +4,8 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import {
   MAX_CREATOR_PHOTO_BYTES,
+  MAX_CREATOR_PHOTO_UPLOAD_BYTES,
+  MAX_CREATOR_PHOTO_UPLOAD_MB,
   MAX_CREATOR_VIDEO_BYTES,
 } from '@/lib/creatorMediaLimits';
 
@@ -34,7 +36,7 @@ function loadFfmpeg() {
 }
 
 function photoSizeError(): string {
-  return 'Photo too large (max 1 MB). Compress it before uploading.';
+  return `Photo too large (max ${MAX_CREATOR_PHOTO_UPLOAD_MB} MB upload). We compress to WebP on save.`;
 }
 
 function videoSizeError(): string {
@@ -43,7 +45,7 @@ function videoSizeError(): string {
 
 export function validateCreatorPhotoUpload(sizeBytes: number): string | null {
   if (sizeBytes <= 0) return 'Empty file';
-  if (sizeBytes > MAX_CREATOR_PHOTO_BYTES) return photoSizeError();
+  if (sizeBytes > MAX_CREATOR_PHOTO_UPLOAD_BYTES) return photoSizeError();
   return null;
 }
 
@@ -68,6 +70,33 @@ async function encodePhoto(buf: Buffer, quality: number): Promise<Buffer> {
       },
     })
     .toBuffer();
+}
+
+async function encodeWebp(buf: Buffer, quality: number): Promise<Buffer> {
+  return sharp(buf)
+    .rotate()
+    .resize(MAX_PHOTO_DIM, MAX_PHOTO_DIM, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality, effort: 4 })
+    .toBuffer();
+}
+
+/** WebP — fast loads + smaller files for feed & ad rotation uploads. */
+export async function optimizeCreatorPhotoWebp(buf: Buffer): Promise<Buffer> {
+  let firstUnderTarget: Buffer | null = null;
+  let smallest: Buffer | null = null;
+
+  for (const q of PHOTO_QUALITY_STEPS) {
+    const out = await encodeWebp(buf, q);
+    if (!smallest || out.length < smallest.length) smallest = out;
+    if (out.length <= TARGET_PHOTO_BYTES) {
+      firstUnderTarget = out;
+      break;
+    }
+  }
+
+  const chosen = firstUnderTarget || smallest;
+  if (!chosen) throw new Error('Photo optimization failed');
+  return chosen;
 }
 
 /** Resize + compress for fast profile loads. */
@@ -152,7 +181,12 @@ export async function optimizeCreatorVideo(buf: Buffer): Promise<Buffer> {
 
 export function creatorAlbumPhotoKey(slug: string, index: number): string {
   const cacheBust = Date.now().toString(36);
-  return `onlyfanssearch/${slug}-onlyfans-${index + 1}-${cacheBust}.jpg`;
+  return `onlyfanssearch/${slug}-feed-${index + 1}-${cacheBust}.webp`;
+}
+
+export function adRotationPhotoKey(slug: string, index: number): string {
+  const cacheBust = Date.now().toString(36);
+  return `onlyfanssearch/${slug}-ad-rot-${index + 1}-${cacheBust}.webp`;
 }
 
 export function creatorAlbumVideoKey(slug: string, index: number): string {

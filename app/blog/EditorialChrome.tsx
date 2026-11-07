@@ -11,16 +11,19 @@ import { getCampaignPlacement } from '@/lib/actions/publicData';
 import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { RtaBadge } from '@/components/AgeGate';
 import ErogramWordmark from '@/components/ErogramWordmark';
+import { TelegramPlaneIcon } from '@/lib/icons/TelegramPlaneIcon';
 
 function MastheadAdSlot() {
   const [cta, setCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
+
   useEffect(() => {
     getCampaignPlacement('navbar-cta')
       .then((d) => { if (d?.campaign?.destinationUrl) setCta(d.campaign); })
       .catch(() => {});
   }, []);
+
   if (!cta) return null;
-  const ctaLabel = 'TRY UNDRESS AI';
+  const ctaLabel = (cta.buttonText || cta.description || '').trim();
   return (
     <a
       href={cta.destinationUrl}
@@ -38,6 +41,7 @@ const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?:
   { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
   { labelKey: 'nav.bots', fallback: 'Bots', href: '/bots' },
   { labelKey: 'nav.aiNsfw', fallback: 'AI NSFW', href: '/ainsfw' },
+  { labelKey: 'nav.onlyfans', fallback: 'OFsearch', href: '/ofsearch' },
 ];
 
 
@@ -455,6 +459,16 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
     if (href === '/groups') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
     if (href === '/bots') return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>;
     if (href === '/ainsfw') return <span className="text-[15px] leading-none">🔞</span>;
+    if (href === '/ofsearch') {
+      return (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <circle cx="12" cy="12" r="10" fill="#00AFF0" />
+          <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="system-ui, sans-serif">
+            OF
+          </text>
+        </svg>
+      );
+    }
     return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
   };
 
@@ -744,6 +758,19 @@ function FooterLink({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
+function FooterExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block text-[13px] text-[#b8b2ab] hover:text-white transition-colors duration-200"
+    >
+      {children}
+    </a>
+  );
+}
+
 function FooterCol({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -759,32 +786,34 @@ function FooterSocialBlock() {
     'group relative flex h-12 w-12 items-center justify-center rounded-[14px] border transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.03] px-5 py-4 sm:min-w-[252px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+    <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-white/[0.03] px-5 py-4 sm:min-w-[200px] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.07] via-transparent to-[#c0392f]/[0.06]" />
       <p className="relative mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#a39e97]">
-        {t('footer.followSocials', 'Follow EROgram on socials')}
+        {t('footer.followSocials', 'Follow EROGRAMX on socials')}
       </p>
       <div className="relative flex items-center justify-center gap-3">
+        <a
+          href="https://t.me/erogrampro"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Follow EROGRAMX on Telegram"
+          title="EROGRAMX"
+          className={`${tileBase} flex-col gap-1 h-auto min-h-12 w-[4.25rem] py-2 bg-[#0d8ecf]/15 border-[#29a9eb]/35 shadow-[0_4px_14px_rgba(13,142,207,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[#29a9eb]/60 hover:bg-[#0d8ecf]/25 hover:shadow-[0_10px_28px_rgba(13,142,207,0.35),0_0_0_1px_rgba(41,169,235,0.15)]`}
+        >
+          <TelegramPlaneIcon className="h-[19px] w-[19px] text-[#29a9eb] transition-transform duration-300 group-hover:scale-110" />
+          <span className="text-[9px] font-black uppercase tracking-[0.12em] text-[#7dd3fc] leading-none">
+            EROGRAMX
+          </span>
+        </a>
         <a
           href="https://x.com/erogrampro"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Follow EROgram on X"
+          aria-label="Follow EROGRAMX on X"
           className={`${tileBase} bg-[#111]/90 border-white/[0.14] shadow-[0_4px_14px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-white/30 hover:bg-[#181818] hover:shadow-[0_10px_28px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.06)]`}
         >
           <svg className="h-[19px] w-[19px] text-white transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        </a>
-        <a
-          href="https://www.reddit.com/r/EROGRAM_PRO/"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Join EROgram on Reddit"
-          className={`${tileBase} border-[#ff8a65]/35 bg-gradient-to-b from-[#ff5722] to-[#d93a00] shadow-[0_4px_16px_rgba(255,69,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18)] hover:border-[#ffb199]/45 hover:shadow-[0_10px_28px_rgba(255,69,0,0.38),inset_0_1px_0_rgba(255,255,255,0.22)]`}
-        >
-          <svg className="h-[19px] w-[19px] text-white transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z" />
           </svg>
         </a>
       </div>
@@ -818,8 +847,7 @@ export function EditorialFooter() {
           <FooterSocialBlock />
         </div>
 
-        {/* 4 columns */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-8 sm:gap-x-8 sm:gap-y-10 mb-8 pb-8 border-b border-white/[0.08]">
           <FooterCol label={t('footer.explore', 'Explore')}>
             <FooterLink href={lp('/best-porn')}>Porn Websites</FooterLink>
             <FooterLink href={lp('/best-telegram-groups')}>{t('footer.telegramGroups', 'Telegram Groups')}</FooterLink>
@@ -827,7 +855,6 @@ export function EditorialFooter() {
             <FooterLink href={lp('/ainsfw')}>{t('footer.aiNsfwTools', 'AI NSFW Tools')}</FooterLink>
             <FooterLink href="/blog">{t('footer.blogGuides', 'Blog & Guides')}</FooterLink>
             <FooterLink href={lp('/ofsearch')}>{t('footer.onlyfansCreators', 'OnlyFans Creators')}</FooterLink>
-            <FooterLink href="/trending"><span className="text-[#c0392f] font-semibold">{t('footer.trending', 'Trending')}</span></FooterLink>
             <FooterLink href="/tags">{t('footer.tags', 'Tags')}</FooterLink>
             <FooterLink href="/community">{t('nav.community', 'Community')}</FooterLink>
           </FooterCol>
@@ -854,6 +881,11 @@ export function EditorialFooter() {
             <FooterLink href={lp('/copyright')}>{t('footer.copyrightTakedown', 'Copyright & Takedown')}</FooterLink>
             <FooterLink href={lp('/compliance')}>{t('footer.contentCompliance', 'Content Compliance')}</FooterLink>
             <FooterLink href={lp('/report-abuse')}>{t('footer.reportAbuse', 'Report Abuse')}</FooterLink>
+          </FooterCol>
+
+          <FooterCol label={t('footer.friendsOfErogram', 'Friends of EROGRAM')}>
+            <FooterExternalLink href="https://camslut.ai">camslut.ai</FooterExternalLink>
+            <FooterExternalLink href="https://slutbot.ai">slutbot.ai</FooterExternalLink>
           </FooterCol>
         </div>
 

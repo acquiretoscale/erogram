@@ -8,7 +8,7 @@ import {
   ExternalLink, ChevronRight, DollarSign, Clock,
   Camera, Film, MapPin, Calendar, Mic, FileText,
   Radio, Zap, Copy, Check, Mail, X, Bookmark,
-  Home, Pencil, Trash2, Save, Upload, UserPlus, TrendingUp, Sparkles,
+  Home, Pencil, Trash2, Save, Upload, UserPlus,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -19,7 +19,14 @@ import { updateCreatorFields, deleteCreatorPhoto, deleteCreator, getCreatorRevie
 import { submitCreatorProfileClaim, getProfileClaimStatus, type ProfileClaimStatus } from '@/lib/actions/creatorProfileClaim';
 import FlameReviewSection, { type FlameReviewItem, MiniFlameRating } from '@/components/FlameReviewSection';
 import { uploadCreatorFeedPhoto, uploadCreatorFeedVideo, uploadCreatorProfilePhoto, removeCreatorFeedVideo } from '@/lib/actions/creatorMediaUpload';
-import { MAX_CREATOR_PHOTO_BYTES, MAX_CREATOR_VIDEO_BYTES, MAX_CREATOR_PHOTO_MB, MAX_CREATOR_VIDEO_MB, humanUploadTooLarge, humanUploadError } from '@/lib/creatorMediaLimits';
+import {
+  MAX_CREATOR_PHOTO_UPLOAD_BYTES,
+  MAX_CREATOR_PHOTO_UPLOAD_MB,
+  MAX_CREATOR_VIDEO_BYTES,
+  MAX_CREATOR_VIDEO_MB,
+  humanUploadTooLarge,
+  humanUploadError,
+} from '@/lib/creatorMediaLimits';
 import type { CreatorReviewData } from '@/lib/actions/ofCreatorProfile';
 import { ofCategoryUrl, OF_CATEGORIES } from '@/app/ofsearch/constants';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
@@ -54,16 +61,6 @@ function useIsLgUp() {
 
 function relatedAvatarSrc(creator: CreatorProfile) {
   return creator.avatarThumbC144 || creator.avatarThumbC50 || creator.avatar || '';
-}
-
-let advertiseStatsPromise: Promise<{ totalViews?: number; activeVisitors?: number } | null> | null = null;
-function loadAdvertiseStats() {
-  if (!advertiseStatsPromise) {
-    advertiseStatsPromise = fetch('/api/advertise-stats', { cache: 'force-cache' })
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null);
-  }
-  return advertiseStatsPromise;
 }
 
 function formatCount(n: number) {
@@ -112,50 +109,66 @@ function VerifiedBadge({ className = 'w-5 h-5 sm:w-6 sm:h-6' }: { className?: st
   );
 }
 
-function VisitOnlyFansCTA({ username, onClick, className = '' }: { username: string; onClick: () => void; className?: string }) {
+function VisitOnlyFansCTA({
+  username,
+  profileUrl,
+  onClick,
+  className = '',
+  prominent = false,
+}: {
+  username: string;
+  profileUrl?: string;
+  onClick: () => void;
+  className?: string;
+  prominent?: boolean;
+}) {
+  const { t } = useTranslation();
   return (
     <a
-      href={ofOutboundUrl(username)}
+      href={ofOutboundUrl(username, profileUrl)}
       target="_blank"
       rel="nofollow noopener noreferrer"
       onClick={onClick}
-      className={`group flex items-center gap-3 px-4 sm:px-5 py-4 sm:py-5 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_28px_rgba(0,175,240,0.45)] no-underline ${className}`}
+      className={`group flex items-center gap-3 rounded-xl transition-all hover:-translate-y-0.5 no-underline ${
+        prominent
+          ? 'px-5 sm:px-6 py-5 sm:py-6 rounded-2xl hover:shadow-[0_12px_36px_rgba(0,175,240,0.55)] ring-2 ring-white/20 ring-offset-2 ring-offset-[#0a1117]'
+          : 'px-4 sm:px-5 py-4 sm:py-5 hover:shadow-[0_8px_28px_rgba(0,175,240,0.45)]'
+      } ${className}`}
       style={{
-        background: 'linear-gradient(135deg, #00AFF0, #0090cc)',
+        background: prominent
+          ? 'linear-gradient(135deg, #00D4FF 0%, #00AFF0 45%, #0088bb 100%)'
+          : 'linear-gradient(135deg, #00AFF0, #0090cc)',
         border: '1px solid #00AFF0',
-        boxShadow: '0 4px 18px rgba(0,175,240,0.35)',
+        boxShadow: prominent ? '0 8px 28px rgba(0,175,240,0.5)' : '0 4px 18px rgba(0,175,240,0.35)',
       }}
     >
-      <OnlyFansIcon className="w-10 h-10 sm:w-11 sm:h-11 group-hover:scale-105 transition-transform" fill="#ffffff" />
-      <div className="flex flex-col min-w-0">
-        <span className="font-black text-base sm:text-lg leading-tight text-white whitespace-nowrap">
-          Visit OnlyFans
+      <OnlyFansIcon
+        className={`flex-shrink-0 group-hover:scale-105 transition-transform ${prominent ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-10 h-10 sm:w-11 sm:h-11'}`}
+        fill="#ffffff"
+      />
+      <div className="flex flex-col min-w-0 flex-1">
+        <span
+          className={`font-black leading-tight text-white ${
+            prominent ? 'text-lg sm:text-xl md:text-2xl' : 'text-base sm:text-lg whitespace-nowrap'
+          }`}
+        >
+          {t('bestOnlyfans.visitProfile')}
         </span>
-        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-white/80">
+        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white/85 truncate">
           @{username}
         </span>
       </div>
-      <ExternalLink className="w-4 h-4 flex-shrink-0 text-white/70 group-hover:text-white transition-colors" />
+      <ExternalLink
+        className={`flex-shrink-0 text-white/80 group-hover:text-white transition-colors ${prominent ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-4 h-4'}`}
+      />
     </a>
   );
 }
 
-function BioWithCtaShell({ creatorName, username, onClick, children }: { creatorName: string; username: string; onClick: () => void; children: React.ReactNode }) {
+function BioSectionShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-6 sm:mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] py-5 sm:py-6 lg:py-8 pl-3 sm:pl-4 pr-5 sm:pr-8 lg:pr-10">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8 md:gap-10 lg:gap-14">
-        <div className="flex-1 min-w-0 max-w-2xl">{children}</div>
-        <div className="flex flex-col items-center justify-center shrink-0 md:ml-auto md:px-6 lg:px-10 py-2 gap-2">
-          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 text-center">
-            {creatorName} main platform
-          </p>
-          <VisitOnlyFansCTA
-            username={username}
-            onClick={onClick}
-            className="w-full md:w-auto min-w-[210px] max-w-[260px]"
-          />
-        </div>
-      </div>
+    <div className="mb-6 sm:mb-8 rounded-2xl border border-white/[0.08] bg-white/[0.03] py-5 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+      {children}
     </div>
   );
 }
@@ -554,103 +567,21 @@ function CreatorProfileTop10Section({
   );
 }
 
-function CreatorPromoSquare() {
-  const [redirect, setRedirect] = useState('/ofsearch');
-  const [totalViews, setTotalViews] = useState<number | null>(null);
-  const [liveNow, setLiveNow] = useState<number | null>(null);
+function CreateFanpageButton({ className = '' }: { className?: string }) {
+  const [joinHref, setJoinHref] = useState('/join-erogram?redirect=%2Fofsearch');
 
   useEffect(() => {
-    setRedirect(window.location.pathname || '/ofsearch');
-    let cancelled = false;
-    const apply = (d: { totalViews?: number; activeVisitors?: number } | null) => {
-      if (cancelled || !d) return;
-      if (typeof d.totalViews === 'number') setTotalViews(d.totalViews);
-      if (typeof d.activeVisitors === 'number') setLiveNow(d.activeVisitors);
-    };
-    const run = () => {
-      loadAdvertiseStats().then(apply);
-    };
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(run, { timeout: 2500 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(id);
-      };
-    }
-    const t = setTimeout(run, 1200);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
+    setJoinHref(`/join-erogram?redirect=${encodeURIComponent(window.location.pathname || '/ofsearch')}`);
   }, []);
 
-  const joinHref = `/join-erogram?redirect=${encodeURIComponent(redirect)}`;
-
   return (
-    <div className="relative w-full overflow-hidden rounded-xl border-2 border-[#00AFF0]/35 bg-gradient-to-br from-[#0b2540] via-[#0a1e35] to-[#061525] shadow-[0_10px_36px_rgba(0,175,240,0.18)]">
-      <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-[#00AFF0]/20 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-[#00D4FF]/10 blur-2xl" />
-
-      <div className="relative flex h-full flex-col p-3.5">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Sparkles className="w-3 h-3 text-[#00AFF0]" strokeWidth={2.5} />
-          <span className="text-[9px] font-black uppercase tracking-[0.14em] text-[#00AFF0]/90">
-            For OnlyFans creators
-          </span>
-        </div>
-
-        <h3 className="text-[15px] font-black leading-tight text-white mb-1.5">
-          Get discovered.
-          <br />
-          <span className="text-[#00AFF0]">Get more subs.</span>
-        </h3>
-
-        <p className="text-[10px] leading-snug text-white/55 mb-2.5">
-          Create your free Erogram profile. Fans search here every day for creators to subscribe to.
-        </p>
-
-        <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-lg border border-white/10 bg-black/20 p-2">
-          <div>
-            <p className="text-[8px] font-bold uppercase tracking-wide text-white/45 leading-tight">Erogram total page views</p>
-            <p className="text-sm font-black tabular-nums text-white mt-0.5">
-              {totalViews != null ? totalViews.toLocaleString('en-US') : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-[8px] font-bold uppercase tracking-wide text-white/45 leading-tight">Browsing right now</p>
-            <p className="text-sm font-black tabular-nums text-[#00AFF0] mt-0.5 flex items-center gap-1">
-              {liveNow != null && (
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-                </span>
-              )}
-              {liveNow != null ? liveNow.toLocaleString('en-US') : '—'}
-            </p>
-          </div>
-        </div>
-
-        <ul className="space-y-1 mb-3">
-          {[
-            'Free profile & listing',
-            'Turn Erogram traffic into subs',
-          ].map((line) => (
-            <li key={line} className="flex items-start gap-1.5 text-[10px] font-semibold text-white/75">
-              <TrendingUp className="w-3 h-3 shrink-0 text-[#00AFF0] mt-0.5" strokeWidth={2.5} />
-              {line}
-            </li>
-          ))}
-        </ul>
-
-        <a
-          href={joinHref}
-          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-[#0a0a0a] bg-[#FFE566] px-2 py-2 text-[11px] font-black uppercase tracking-wide text-[#0a0a0a] shadow-[3px_3px_0_0_#0a0a0a] transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0a0a0a] active:translate-y-0 active:shadow-[1px_1px_0_0_#0a0a0a]"
-        >
-          <UserPlus className="w-3.5 h-3.5" strokeWidth={2.75} />
-          Create your fanpage
-        </a>
-      </div>
-    </div>
+    <a
+      href={joinHref}
+      className={`flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#0a0a0a] bg-[#FFE566] px-4 py-3.5 text-xs sm:text-sm font-black uppercase tracking-wide text-[#0a0a0a] shadow-[3px_3px_0_0_#0a0a0a] transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_#0a0a0a] active:translate-y-0 active:shadow-[1px_1px_0_0_#0a0a0a] no-underline ${className}`}
+    >
+      <UserPlus className="w-4 h-4 shrink-0" strokeWidth={2.75} />
+      <span className="text-center leading-snug">OF Creator? GET LISTED ON EROGRAMX</span>
+    </a>
   );
 }
 
@@ -774,8 +705,6 @@ function ProfileRightRail({
 
   return (
     <div className="space-y-3">
-      {includeHeavy && <CreatorPromoSquare />}
-
       {includeHeavy && OF_SEARCH_ENGINE_ENABLED && (
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-2.5">
         <ProfileOFPremiumSearch
@@ -848,6 +777,13 @@ export default function CreatorProfileClient({
   const [avatarError, setAvatarError] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(publicAccess);
+  const [feedExtraPhotos, setFeedExtraPhotos] = useState<string[]>(creator.extraPhotos || []);
+  const [feedExtraVideos, setFeedExtraVideos] = useState<string[]>(creator.extraVideos || []);
+
+  useEffect(() => {
+    setFeedExtraPhotos(creator.extraPhotos || []);
+    setFeedExtraVideos(creator.extraVideos || []);
+  }, [creator.extraPhotos, creator.extraVideos]);
 
   useEffect(() => {
     if (publicAccess) return;
@@ -1018,7 +954,7 @@ export default function CreatorProfileClient({
       const file = files[i];
       setBulkUpload({ current: i + 1, total: files.length });
       const isVideo = file.type.startsWith('video/');
-      const maxBytes = isVideo ? MAX_CREATOR_VIDEO_BYTES : MAX_CREATOR_PHOTO_BYTES;
+      const maxBytes = isVideo ? MAX_CREATOR_VIDEO_BYTES : MAX_CREATOR_PHOTO_UPLOAD_BYTES;
       if (file.size > maxBytes) {
         errors.push(humanUploadTooLarge(file.name, isVideo));
         continue;
@@ -1348,10 +1284,10 @@ export default function CreatorProfileClient({
 
           {/* MAIN column */}
           <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-            {/* Avatar + name */}
-            <div className="flex items-start gap-4 sm:gap-6 -mt-28 sm:-mt-36 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 flex-1 min-w-0">
-              <div className="flex flex-col items-stretch flex-shrink-0 w-56 sm:w-72">
+            {/* Avatar + CTA + name — mobile: photo → CTA → name; lg: photo | name then CTA */}
+            <div className="-mt-28 sm:-mt-36 mb-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+              <div className="flex flex-col items-stretch w-full max-w-[288px] sm:w-56 md:w-64 mx-auto lg:mx-0 flex-shrink-0">
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden ring-4 ring-[#0a1117] bg-[#0d1e2a] shadow-2xl group/avatar">
                 {hasAvatar ? (
                   <img
@@ -1412,7 +1348,18 @@ export default function CreatorProfileClient({
               </div>
               </div>
 
-              <div className="flex-1 pb-1 min-w-0">
+              <div className="lg:hidden w-full max-w-md mx-auto">
+                <VisitOnlyFansCTA
+                  username={creator.username}
+                  profileUrl={creator.url}
+                  onClick={handleViewProfileClick}
+                  prominent
+                  className="w-full"
+                />
+                <CreateFanpageButton className="mt-3" />
+              </div>
+
+              <div className="min-w-0 flex-1 flex flex-col gap-4 pb-1 lg:pt-1">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight flex items-center gap-1.5 min-w-0">
                     {creator.name}
@@ -1449,6 +1396,16 @@ export default function CreatorProfileClient({
                   )}
                 </div>
 
+                <div className="hidden lg:block w-full max-w-md">
+                  <VisitOnlyFansCTA
+                    username={creator.username}
+                    profileUrl={creator.url}
+                    onClick={handleViewProfileClick}
+                    prominent
+                    className="w-full"
+                  />
+                  <CreateFanpageButton className="mt-3" />
+                </div>
               </div>
               </div>
             </div>
@@ -1891,13 +1848,9 @@ export default function CreatorProfileClient({
           })();
           if (!bioSection) return null;
           return (
-            <BioWithCtaShell
-              creatorName={creator.name}
-              username={creator.username}
-              onClick={handleViewProfileClick}
-            >
+            <BioSectionShell>
               {bioSection}
-            </BioWithCtaShell>
+            </BioSectionShell>
           );
         })()}
 
@@ -1931,18 +1884,40 @@ export default function CreatorProfileClient({
           </div>
         </div>
 
-        {(canEditProfile || hasAvatar || hasHeader || (creator.extraPhotos?.length || 0) > 0 || (creator.extraVideos?.length || 0) > 0) && (
+        {(canEditProfile || hasAvatar || hasHeader || feedExtraPhotos.length > 0 || feedExtraVideos.length > 0) && (
           <CreatorMediaFeed
             slug={creator.slug}
             creatorId={creator._id}
             creatorName={creator.name}
             avatar={hasAvatar ? creator.avatar : undefined}
             header={hasHeader ? creator.header : undefined}
-            extraPhotos={creator.extraPhotos || []}
-            extraVideos={creator.extraVideos || []}
+            extraPhotos={feedExtraPhotos}
+            extraVideos={feedExtraVideos}
             isAdmin={canEditProfile}
             onLightbox={setLightboxImg}
-            onUpdated={() => router.refresh()}
+            onUpdated={(change) => {
+              if (!change) {
+                router.refresh();
+                return;
+              }
+              if (change.kind === 'photo') {
+                setFeedExtraPhotos((prev) =>
+                  change.op === 'add'
+                    ? prev.includes(change.url)
+                      ? prev
+                      : [...prev, change.url]
+                    : prev.filter((u) => u !== change.url),
+                );
+              } else {
+                setFeedExtraVideos((prev) =>
+                  change.op === 'add'
+                    ? prev.includes(change.url)
+                      ? prev
+                      : [...prev, change.url]
+                    : prev.filter((u) => u !== change.url),
+                );
+              }
+            }}
           />
         )}
 
@@ -2211,7 +2186,7 @@ export default function CreatorProfileClient({
                   />
                   <div className="text-xs font-bold text-white mb-1">Add photos</div>
                   <p className="text-[10px] text-gray-500 mb-3">
-                    Upload as many photos as you want. Max {MAX_CREATOR_PHOTO_MB} MB each. Videos max {MAX_CREATOR_VIDEO_MB} MB.
+                    Photos up to {MAX_CREATOR_PHOTO_UPLOAD_MB} MB each (we compress to WebP). Videos max {MAX_CREATOR_VIDEO_MB} MB.
                   </p>
                   <button
                     type="button"

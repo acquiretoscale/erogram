@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, Bookmark, Crown, Trash2, X, Heart, Clock, TrendingUp, Globe, Send, ImageIcon } from 'lucide-react';
@@ -11,9 +11,7 @@ import { rankingListSize } from '@/lib/bestOfPageContent/top50Rankings';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
 import { ofCreatorProfileUrl, ofOutboundUrl } from '@/lib/ofsearch/creatorUrls';
-import { trackCreatorClick, trackTrendingClick } from '@/lib/actions/onlyfansTracking';
-import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
-import { getTrendingCreators } from '@/lib/actions/publicData';
+import { trackCreatorClick } from '@/lib/actions/onlyfansTracking';
 import { deleteCreatorBySlug } from '@/lib/actions/ofCreatorsBrowse';
 import type { TopLikedCreatorPhoto } from '@/lib/actions/profileFeed';
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
@@ -536,52 +534,8 @@ interface Props {
   paidFeatured?: any[];
 }
 
-function mergeFeaturedLists(paid: any[], rail: any[]) {
-  const seen = new Set<string>();
-  const out: any[] = [];
-  for (const c of [...paid, ...rail]) {
-    const u = (c.username || '').toLowerCase();
-    if (!u || seen.has(u)) continue;
-    seen.add(u);
-    out.push(c);
-  }
-  return out;
-}
-
-function featuredCoverSrc(tc: { album?: string[]; avatar?: string }) {
-  const album = tc.album?.find((url) => typeof url === 'string' && url.startsWith('http'));
-  return album || tc.avatar || '';
-}
-
-function pickFeaturedBlock(list: any[]) {
-  return [...list].sort(() => Math.random() - 0.5).slice(0, 4);
-}
-
-function isCreatorLiveNow(start: number, end: number): boolean {
-  if (start < 0 || end < 0) return false;
-  const gmtHour = new Date().getUTCHours();
-  if (start <= end) return gmtHour >= start && gmtHour < end;
-  return gmtHour >= start || gmtHour < end;
-}
-
-function FeaturedLiveBadge({ liveHourStart, liveHourEnd }: { liveHourStart?: number; liveHourEnd?: number }) {
-  if (!isCreatorLiveNow(liveHourStart ?? -1, liveHourEnd ?? -1)) return null;
-  return (
-    <div className="absolute top-2 left-2 z-10 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/55 backdrop-blur-sm">
-      <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-      </span>
-      <span className="text-[10px] font-black text-white uppercase tracking-wider">Live</span>
-    </div>
-  );
-}
-
 const CREATOR_VIEW_PROFILE_BTN =
   'w-full flex items-center justify-center gap-2 py-2 sm:py-2.5 rounded-xl bg-[#0084BD] text-white text-[12px] sm:text-sm font-black text-center shadow-lg border border-[#0084BD] group-hover:bg-[#0070A3] transition-colors no-underline';
-
-const FEATURED_CTA =
-  'w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#00AFF0] to-[#00D4FF] text-white text-[13px] sm:text-sm font-bold text-center shadow-sm group-hover:shadow-md group-hover:from-[#009ADB] group-hover:to-[#00BFE8] transition-all';
 
 function formatCount(n: number) {
   if (!n) return '';
@@ -929,22 +883,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [allFeatured, setAllFeatured] = useState<any[]>([]);
-  // Which stable album image each featured card is currently showing → for split-test click attribution.
-  const shownVariantRef = useRef<Record<string, number>>({});
-  const paidFeaturedRef = useRef(paidFeatured);
-  const featuredLockedRef = useRef(false);
-  const [blockFeatured, setBlockFeatured] = useState<any[]>([]);
-  const ofSearchPlacement = (idx: number) => (idx >= 0 ? `of-search-featured:v${idx}` : 'of-search-featured');
-  const clickFeaturedCreator = useCallback((tc: any) => {
-    const variant = tc.albumIdx?.[0] ?? 0;
-    shownVariantRef.current[tc._id] = variant;
-    if (tc.isPaidCampaign && tc.campaignId) trackCampaignClick(tc.campaignId, ofSearchPlacement(variant));
-    else trackTrendingClick(tc._id, variant);
-    // Promoted / featured: keep tracking link untouched.
-    const dest = (tc.url || tc.destinationUrl || '').trim() || `https://onlyfans.com/${tc.username}`;
-    window.open(dest, '_blank', 'noopener,noreferrer');
-  }, []);
   useEffect(() => {
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
 
@@ -957,28 +895,6 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
         })
         .catch(() => {});
     }
-  }, []);
-
-  useEffect(() => {
-    if (featuredLockedRef.current) return;
-
-    const lockFeatured = (merged: any[]) => {
-      if (featuredLockedRef.current || merged.length === 0) return;
-      featuredLockedRef.current = true;
-      setAllFeatured(merged);
-      setBlockFeatured(pickFeaturedBlock(merged));
-    };
-
-    getTrendingCreators()
-      .then((data) => {
-        const merged = Array.isArray(data)
-          ? mergeFeaturedLists(paidFeaturedRef.current, data)
-          : [...paidFeaturedRef.current];
-        lockFeatured(merged);
-      })
-      .catch(() => {
-        lockFeatured([...paidFeaturedRef.current]);
-      });
   }, []);
 
   const handleToggleSave = useCallback(async (creatorId: string) => {
@@ -1122,65 +1038,8 @@ export default function OnlyFansClient({ initialCreators, totalCreators, initial
 
         {(OF_SEARCH_ENGINE_ENABLED ? !searchActive : true) && (
           <>
-            {blockFeatured.length > 0 && (
-              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 sm:pt-10 sm:pb-10">
-                <div className="relative overflow-hidden rounded-2xl border border-[#00AFF0]/20 bg-gradient-to-br from-[#061018] via-[#0a1c2e] to-[#0d2844] shadow-[0_20px_50px_-12px_rgba(0,175,240,0.18),inset_0_1px_0_0_rgba(255,255,255,0.06)] p-4 sm:p-6">
-                  <div className="pointer-events-none absolute -top-28 -right-20 h-56 w-56 rounded-full bg-[#00AFF0]/20 blur-3xl" />
-                  <div className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-[#00D4FF]/12 blur-3xl" />
-                  <div className="relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Crown size={14} className="text-[#00AFF0]" fill="currentColor" />
-                      <h2 className="text-sm sm:text-base font-black text-white">
-                        Featured <span className="text-[#00AFF0]">OnlyFans Creators</span>
-                      </h2>
-                    </div>
-                    <a href="/submit" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-white/[0.08] border border-white/[0.10] text-white/70 text-[10px] sm:text-xs font-black uppercase tracking-wider hover:bg-[#00AFF0]/15 hover:border-[#00AFF0]/30 hover:text-[#00AFF0] transition-colors">Submit Your Creator</a>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5">
-                    {blockFeatured.map((tc) => {
-                      const cover = featuredCoverSrc(tc);
-                      return (
-                      <button key={`feat-${tc._id}`} type="button" onClick={() => clickFeaturedCreator(tc)} className="group w-full text-left rounded-2xl overflow-hidden bg-white ring-[2px] ring-[#00AFF0]/30 hover:ring-[#00AFF0] shadow-[0_8px_28px_-8px_rgba(0,175,240,0.25)] hover:shadow-[0_12px_36px_-6px_rgba(0,175,240,0.35)] hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none">
-                        <div className="relative aspect-[3/4] bg-[#f0f8ff]">
-                          {cover ? (
-                            <img
-                              src={cover}
-                              alt={`${tc.name} OnlyFans`}
-                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[#00AFF0] bg-[#f0f8ff]">{tc.name.charAt(0)}</div>
-                          )}
-                          <FeaturedLiveBadge liveHourStart={tc.liveHourStart} liveHourEnd={tc.liveHourEnd} />
-                        </div>
-                        <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
-                          <h3 className="font-bold text-[13px] sm:text-[15px] text-gray-900 truncate leading-tight">{tc.name}</h3>
-                          <p className="text-[11px] sm:text-[13px] text-[#00AFF0] font-semibold mt-0.5">@{tc.username}</p>
-                          {tc.categories && tc.categories.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {tc.categories.slice(0, 2).map((cat: string) => (
-                                <span key={cat} className="px-1.5 py-0.5 bg-[#00AFF0]/10 text-[#00AFF0] text-[8px] sm:text-[9px] font-bold rounded-md capitalize border border-[#00AFF0]/20">
-                                  {cat}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3"><div className={FEATURED_CTA}>{t('ofSearch.viewProfile')}</div></div>
-                      </button>
-                      );
-                    })}
-                  </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
             {communityBlocks.length > 0 && (
-              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 sm:pt-8 sm:pb-10" aria-label="Creator Spotlight">
+              <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 sm:pt-10 sm:pb-10" aria-label="Creator Spotlight">
                 <div className="relative overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.12)]">
                   <div className="pointer-events-none absolute -top-24 right-0 h-56 w-56 rounded-full bg-[#00AFF0]/[0.06] blur-3xl" aria-hidden="true" />
                   <div className="relative flex flex-col lg:flex-row lg:items-stretch lg:justify-between gap-6 sm:gap-8 p-5 sm:p-7 lg:p-8 border-b border-black/[0.06]">

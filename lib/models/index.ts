@@ -1029,6 +1029,8 @@ export const onlyFansCreatorSchema = new Schema(
     redditUrl: { type: String, default: '' },
     patreonUrl: { type: String, default: '' },
     extraPhotos: { type: [String], default: [] },
+    /** Ad A/B split-test only — never mixed with profile feed extraPhotos / videos. */
+    adRotationPhotos: { type: [String], default: [] },
     extraVideos: { type: [String], default: [] },
     submittedByUser: { type: Boolean, default: false },
     submittedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
@@ -1205,9 +1207,7 @@ const trendingOFCreatorSchema = new Schema(
     // Kept only so old docs don't error; no longer read for rendering.
     adImages:           { type: [String], default: [] },
     activeImageIndex:   { type: Number, default: -1 },
-    // PAUSED album images — the source of truth for ad rotation, keyed by IMAGE URL (not index,
-    // so deleting/reordering the album never mis-targets). A URL here does NOT rotate in ads.
-    // Empty = the whole creator album rotates.
+    // PAUSED ad-rotation images (avatar + adRotationPhotos only — not profile feed extras).
     pausedImageUrls:    { type: [String], default: [] },
     // When split test was started (to compute 48h auto-winner window).
     splitTestStartedAt: { type: Date, default: null },
@@ -1546,3 +1546,22 @@ const exploreCategoryOrderSchema = new Schema(
 
 export const ExploreCategoryOrder =
   models.ExploreCategoryOrder || model('ExploreCategoryOrder', exploreCategoryOrderSchema);
+
+const linkExchangePartnerSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    href: { type: String, required: true },
+    logo: { type: String, required: true },
+    description: { type: String, required: true },
+    sortOrder: { type: Number, default: 0 },
+    hidden: { type: Boolean, default: false },
+    /** When set, outbound links for this explore listing stay dofollow (e.g. ikisoda). */
+    exploreListingSlug: { type: String, default: '' },
+  },
+  { timestamps: true },
+);
+linkExchangePartnerSchema.index({ href: 1 });
+linkExchangePartnerSchema.index({ hidden: 1, sortOrder: 1 });
+
+export const LinkExchangePartner =
+  models.LinkExchangePartner || model('LinkExchangePartner', linkExchangePartnerSchema);

@@ -18,6 +18,15 @@ import { checkBookmarks } from '@/lib/actions/publicData';
 import GroupCardSkeleton from './GroupCardSkeleton';
 import { filterCategories } from './constants';
 import { BOOST_WEIGHT, isGroupsInFeedPlacement, seededIndex } from '@/lib/adPlacements';
+import {
+  GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX,
+  findFeaturedOfCampaignInFeed,
+  pinnedFeaturedOfCampaignForPage,
+} from '@/lib/explore/pinnedFeaturedOfTopSlot';
+import {
+  EROGRAM_OFFICIAL_GROUP_SLUG,
+  EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX,
+} from '@/lib/groups/erogramOwnedGroups';
 import { useTranslation, useLocalePath, useLocale } from '@/lib/i18n';
 // Lazy load modals to reduce initial bundle size
 const ReviewModal = dynamic(() => import('./ReviewModal'), {
@@ -132,6 +141,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
 
   const [topGroups, setTopGroups] = useState<Group[]>([]);
   const [topGroupsLoading, setTopGroupsLoading] = useState(true);
+  const [featuredOwnedGroups, setFeaturedOwnedGroups] = useState<Group[]>([]);
+  const [featuredOwnedLoading, setFeaturedOwnedLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewLoginPath, setReviewLoginPath] = useState('/groups');
   const [selectedGroupForReview, setSelectedGroupForReview] = useState<Group | null>(null);
@@ -152,20 +163,36 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   useEffect(() => {
     setTopGroupsLoading(true);
 
+    const parseGroupsJson = async (res: Response, label: string) => {
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok || !ct.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`${label}: ${res.status} ${text.slice(0, 80)}`);
+      }
+      return res.json();
+    };
+
     fetch(`/api/groups?topGroup=true&limit=20&locale=${locale}`)
-      .then(r => r.json())
+      .then((r) => parseGroupsJson(r, 'top groups'))
       .then(data => { if (data.groups) setTopGroups(data.groups); })
       .catch(err => console.error('Failed to fetch top groups:', err))
       .finally(() => setTopGroupsLoading(false));
 
-  }, []);
+    fetch(`/api/groups?ownedFeatured=true&locale=${locale}`)
+      .then((r) => parseGroupsJson(r, 'featured owned'))
+      .then(data => { if (data.groups) setFeaturedOwnedGroups(data.groups); })
+      .catch(err => console.error('Failed to fetch featured owned groups:', err))
+      .finally(() => setFeaturedOwnedLoading(false));
+
+  }, [locale]);
 
   const allGroupIds = useMemo(() => {
     const ids = new Set<string>();
     regularGroups.forEach(g => ids.add(g._id));
     topGroups.forEach(g => ids.add(g._id));
+    featuredOwnedGroups.forEach(g => ids.add(g._id));
     return Array.from(ids);
-  }, [regularGroups, topGroups]);
+  }, [regularGroups, topGroups, featuredOwnedGroups]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || allGroupIds.length === 0) return;
@@ -453,6 +480,12 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     !topGroupsLoading &&
     topGroups.length > 0;
 
+  const showFeaturedOwned =
+    isDefaultBrowse &&
+    !searchQuery.trim() &&
+    !featuredOwnedLoading &&
+    featuredOwnedGroups.length > 0;
+
   const displayGroups = useMemo(() => {
     return regularGroups;
   }, [regularGroups]);
@@ -476,6 +509,25 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
   type TopGroupsSpot = { kind: 'ad'; campaign: FeedCampaign } | { kind: 'group'; group: Group };
   const feedCampKey = feedCampaigns.map((c) => c._id).join(',');
   const topGroupKey = topGroups.map((g) => `${g._id}:${g.boosted ? 1 : 0}`).join(',');
+  const erogramOfficialGroup = useMemo(
+    () => topGroups.find((g) => g.slug === EROGRAM_OFFICIAL_GROUP_SLUG) ?? null,
+    [topGroups],
+  );
+  const featuredOwnedKey = featuredOwnedGroups.map((g) => g._id).join(',');
+  const featuredOwnedRotation = useMemo(() => {
+    if (featuredOwnedLoading || featuredOwnedGroups.length === 0) return [] as Group[];
+    const pool = [...featuredOwnedGroups];
+    const pickAt = (seed: string, size: number) =>
+      adsLive ? Math.floor(Math.random() * size) : seededIndex(seed, size);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = pickAt(`featured-owned:${featuredOwnedKey}:${i}`, i + 1);
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const slotCount = Math.min(4, pool.length);
+    return pool.slice(0, slotCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adsLive, featuredOwnedKey, featuredOwnedLoading]);
+
   const topSpotPicks = useMemo(() => {
     const empty = { 0: null, 1: null, 2: null, 3: null } as Record<number, TopGroupsSpot | null>;
     if (topGroupsLoading || topGroups.length === 0) return empty;
@@ -484,8 +536,9 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     const usedKeys = new Set<string>();
     const pickAt = (seed: string, size: number) =>
       adsLive ? Math.floor(Math.random() * size) : seededIndex(seed, size);
-    const boostedArr = topGroups.filter((g) => g.boosted);
-    const nonBoosted = topGroups.filter((g) => !g.boosted);
+    const excludeOfficial = (g: Group) => g.slug !== EROGRAM_OFFICIAL_GROUP_SLUG;
+    const boostedArr = topGroups.filter((g) => g.boosted && excludeOfficial(g));
+    const nonBoosted = topGroups.filter((g) => !g.boosted && excludeOfficial(g));
     const manualBySpot: Record<number, Group | undefined> = {
       0: nonBoosted.find((g) => g.topGroupSlot === 1),
       1: nonBoosted.find((g) => g.topGroupSlot === 2),
@@ -547,6 +600,8 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     };
 
     for (let spot = 0; spot < 4; spot++) {
+      if (spot === EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX) continue;
+      if (spot === GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX) continue;
       picks[spot] = pickForSlot(spot);
     }
 
@@ -554,14 +609,39 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
     for (const g of boostedArr) {
       const placed = Object.values(picks).some((p) => p?.kind === 'group' && p.group._id === g._id);
       if (placed) continue;
-      const adSpot = [0, 1, 2, 3].find((s) => picks[s]?.kind === 'ad');
+      const adSpot = [0, 1, 2, 3].find(
+        (s) =>
+          s !== EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX &&
+          s !== GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX &&
+          picks[s]?.kind === 'ad',
+      );
       if (adSpot == null) break;
       picks[adSpot] = { kind: 'group', group: g };
     }
 
+    if (erogramOfficialGroup) {
+      picks[EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX] = { kind: 'group', group: erogramOfficialGroup };
+    } else {
+      picks[EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX] = pickForSlot(EROGRAM_TOP_GROUPS_PIN_SLOT_INDEX);
+    }
+
+    if (!isTelegram) {
+      const pinnedOf = findFeaturedOfCampaignInFeed(feedCampaigns);
+      if (pinnedOf) {
+        picks[GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX] = {
+          kind: 'ad',
+          campaign: pinnedFeaturedOfCampaignForPage(pinnedOf, 'groups'),
+        };
+      } else {
+        picks[GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX] = pickForSlot(GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX);
+      }
+    } else {
+      picks[GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX] = pickForSlot(GROUPS_PINNED_VICTORIA_TOP_SLOT_INDEX);
+    }
+
     return picks;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adsLive, feedCampKey, topGroupKey, topGroupsLoading, isTelegram]);
+  }, [adsLive, feedCampKey, topGroupKey, topGroupsLoading, isTelegram, erogramOfficialGroup]);
 
   const gridCampaigns = useMemo(() => {
     // Exclude only the exact slot ROWS consumed by Top Groups, not every row sharing that _id.
@@ -652,7 +732,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           <h1 className="text-lg sm:text-xl md:text-2xl font-black leading-tight tracking-tight text-white mb-2">
             {t('groups.title')}
           </h1>
-          <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
+          <p className="text-white/50 text-[10px] min-[380px]:text-xs sm:text-sm md:text-base mx-auto leading-snug whitespace-nowrap max-w-full overflow-x-auto px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {t('groups.heroSubtitle')}
           </p>
         </motion.div>
@@ -730,22 +810,24 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
           </div>
         </div>
 
-        {/* GO PREMIUM — mobile: compact strip */}
+        {/* Premium CTA — mobile: same copy/style as masthead top-right on /groups */}
         <Link
           href={lp('/premium')}
-          className="lg:hidden flex items-center justify-between gap-1.5 mb-3 mx-auto w-[52%] px-2.5 py-1.5 rounded-xl transition-all hover:brightness-105 active:scale-[0.99]"
+          className="lg:hidden flex flex-col items-center justify-center gap-1 w-full max-w-md mx-auto px-3 py-2.5 mb-3 rounded-[4px] transition-all hover:brightness-105 active:scale-[0.99]"
           style={{
             background: 'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)',
-            boxShadow: '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+            boxShadow: '0 4px 18px -6px rgba(255,215,0,0.55), inset 0 1px 0 rgba(255,255,255,0.4)',
           }}
         >
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-black text-[#1a0f00] tracking-tight leading-tight">{t('groups.goPremium')}</div>
-            <div className="text-[7px] font-semibold text-[#3d2800]/80 mt-0.5">{t('groups.unlockPremiumGroups')}</div>
-          </div>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
-            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-          </svg>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-[#1a0f00] tracking-[0.06em] uppercase leading-none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
+              <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+            </svg>
+            {t('nav.upgradePremium', 'UPGRADE PREMIUM')}
+          </span>
+          <span className="text-[8px] font-semibold text-[#3d2800]/90 leading-tight text-center px-1">
+            {t('groups.mastheadPremiumSubtitle', 'Unlock Instantly 4000+ Unlisted Premium TG groups')}
+          </span>
         </Link>
 
         {/* Trending Group Categories — every content category with 20+ listings.
@@ -798,34 +880,6 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
         {/* Global top banner (below stories) */}
         <div className="w-full mb-4">
           <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
-
-        {/* Explore navigation — mobile only (Neo-brutalism). */}
-        <div className="lg:hidden grid grid-cols-3 gap-1.5 mb-3">
-          <Link
-            href={lp('/bots')}
-            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-            style={{ background: '#00AFF0', color: '#ffffff', border: '2px solid #fff', boxShadow: '4px 4px 0 0 #fff' }}
-          >
-            Telegram Bots
-          </Link>
-          <Link
-            href={lp('/ainsfw')}
-            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-            style={{ background: '#00AFF0', color: '#ffffff', border: '2px solid #fff', boxShadow: '4px 4px 0 0 #fff' }}
-          >
-            AI NSFW
-          </Link>
-          <Link
-            href={lp('/ofsearch')}
-            className="flex items-center justify-center gap-1 px-1 py-2.5 text-[10px] font-black uppercase tracking-tight rounded-lg whitespace-nowrap transition-all duration-150 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0_0_#fff] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-            style={{ background: '#ffffff', color: '#0f172a', border: '2px solid #cbd5e1', boxShadow: '4px 4px 0 0 #cbd5e1' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#00AFF0" className="shrink-0">
-              <path d="M24 4.003h-4.015c-3.45 0-5.3.197-6.748 1.957a7.996 7.996 0 1 0 2.103 9.211c3.182-.231 5.39-2.134 6.085-5.173c0 0-2.399.585-4.43 0c4.018-.777 6.333-3.037 7.005-5.995M5.61 11.999A2.391 2.391 0 0 1 9.28 9.97a2.966 2.966 0 0 1 2.998-2.528h.008c-.92 1.778-1.407 3.352-1.998 5.263A2.392 2.392 0 0 1 5.61 12Zm2.386-7.996a7.996 7.996 0 1 0 7.996 7.996a7.996 7.996 0 0 0-7.996-7.996m0 10.394A2.399 2.399 0 1 1 10.395 12a2.396 2.396 0 0 1-2.399 2.398Z" />
-            </svg>
-            OF Search
-          </Link>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -888,7 +942,41 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                 </div>
               )}
 
-              {/* Featured Groups section removed (brain: versatile-slots). Paid featured now lives in Top Groups Spot 1. */}
+              {showFeaturedOwned && (
+                <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
+                  <div className="relative p-3 sm:p-4">
+                    <div className="flex items-baseline gap-2.5 mb-3">
+                      <h2 className="text-base font-black text-[#0f172a] leading-none tracking-tight">
+                        {t('groups.featuredGroups')}
+                      </h2>
+                    </div>
+
+                    <div
+                      className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 rounded-2xl p-3 sm:p-4"
+                      style={{ background: 'linear-gradient(180deg, #0d1117 0%, #0a0e16 100%)' }}
+                    >
+                      {featuredOwnedRotation.map((g, idx) => {
+                        const tgLink = g.isAdvertisement && g.advertisementUrl
+                          ? g.advertisementUrl
+                          : g.telegramLink || undefined;
+                        return (
+                          <GroupCard
+                            key={`featured-owned-${g._id}-${idx}`}
+                            group={g}
+                            isFeatured
+                            isIndex={idx}
+                            onOpenReviewModal={openReviewModal}
+                            onOpenReportModal={openReportModal}
+                            isBookmarked={!!bookmarkedMap[g._id]}
+                            bookmarkId={bookmarkedMap[g._id] || null}
+                            directLink={tgLink}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="text-center mb-6">
                 <h2 className="text-2xl md:text-3xl font-black text-[#f5f5f5]">

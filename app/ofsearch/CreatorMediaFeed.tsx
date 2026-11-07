@@ -15,8 +15,8 @@ import {
 } from '@/lib/actions/profileFeed';
 import CreatorMediaEngagement from '@/components/CreatorMediaEngagement';
 import {
-  MAX_CREATOR_PHOTO_BYTES,
-  MAX_CREATOR_PHOTO_MB,
+  MAX_CREATOR_PHOTO_UPLOAD_BYTES,
+  MAX_CREATOR_PHOTO_UPLOAD_MB,
   MAX_CREATOR_VIDEO_BYTES,
   MAX_CREATOR_VIDEO_MB,
   humanUploadError,
@@ -92,7 +92,7 @@ export default function CreatorMediaFeed({
   extraVideos: string[];
   isAdmin: boolean;
   onLightbox: (url: string) => void;
-  onUpdated: () => void;
+  onUpdated: (change?: { kind: 'photo' | 'video'; op: 'add' | 'remove'; url: string }) => void;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -201,7 +201,7 @@ export default function CreatorMediaFeed({
       }
 
       if (kind === 'photo') {
-        if (file.size > MAX_CREATOR_PHOTO_BYTES) {
+        if (file.size > MAX_CREATOR_PHOTO_UPLOAD_BYTES) {
           setError(humanUploadTooLarge(file.name, false));
           return;
         }
@@ -229,7 +229,7 @@ export default function CreatorMediaFeed({
         if ('error' in res) {
           setError(humanUploadError(res.error, file.name));
         } else {
-          onUpdated();
+          onUpdated({ kind, op: 'add', url: res.url });
         }
       } catch (e: any) {
         setError(humanUploadError(e?.message || 'Upload failed', file.name));
@@ -262,7 +262,7 @@ export default function CreatorMediaFeed({
         ? await removeCreatorFeedPhoto(token, slug, item.url)
         : await removeCreatorFeedVideo(token, slug, item.url);
     if ('error' in res) setError(res.error);
-    else onUpdated();
+    else onUpdated({ kind: item.type, op: 'remove', url: item.url });
   };
 
   const showFeed = totalPosts > 0 || canManage;
@@ -319,7 +319,7 @@ export default function CreatorMediaFeed({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white mb-1">Share to your Erogram feed</p>
               <p className="text-xs text-gray-500">
-                Photos max {MAX_CREATOR_PHOTO_MB} MB · Videos max {MAX_CREATOR_VIDEO_MB} MB
+                Photos up to {MAX_CREATOR_PHOTO_UPLOAD_MB} MB (saved as WebP) · Videos max {MAX_CREATOR_VIDEO_MB} MB
               </p>
             </div>
             <div className="flex gap-2 shrink-0">

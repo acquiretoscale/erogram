@@ -17,6 +17,12 @@ import { voteOnBot, unvoteOnBot, getAllBotStats } from '@/lib/actions/botVotes';
 import type { BotStatsData } from '@/lib/actions/botVotes';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { BOOST_WEIGHT, seededIndex } from '@/lib/adPlacements';
+import {
+  PINNED_FEATURED_OF_TOP_SLOT_INDEX,
+  findFeaturedOfCampaignInFeed,
+  pinnedFeaturedOfCampaignForPage,
+  isPinnedFeaturedOfTopSlot,
+} from '@/lib/explore/pinnedFeaturedOfTopSlot';
 // Removed react-window import as virtualization is no longer used
 
 
@@ -374,6 +380,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
     };
 
     for (let spot = 0; spot < 4; spot++) {
+      if (isPinnedFeaturedOfTopSlot(spot)) continue;
       picks[spot] = pickForSlot(spot);
     }
 
@@ -386,10 +393,22 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
     );
     for (const bot of boostedBots) {
       if (placedBoosted.has(bot._id)) continue;
-      const adSpot = [0, 1, 2, 3].find((s) => picks[s]?.kind === 'ad');
+      const adSpot = [0, 1, 2, 3].find(
+        (s) => !isPinnedFeaturedOfTopSlot(s) && picks[s]?.kind === 'ad',
+      );
       if (adSpot == null) break;
       picks[adSpot] = { kind: 'bot', bot };
       placedBoosted.add(bot._id);
+    }
+
+    const pinnedOf = findFeaturedOfCampaignInFeed(feedCampaigns ?? []);
+    if (pinnedOf) {
+      picks[PINNED_FEATURED_OF_TOP_SLOT_INDEX] = {
+        kind: 'ad',
+        campaign: pinnedFeaturedOfCampaignForPage(pinnedOf, 'bots'),
+      };
+    } else {
+      picks[PINNED_FEATURED_OF_TOP_SLOT_INDEX] = pickForSlot(PINNED_FEATURED_OF_TOP_SLOT_INDEX);
     }
 
     return picks;

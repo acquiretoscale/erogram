@@ -5,7 +5,9 @@ import connectDB from '@/lib/db/mongodb';
 import { User, OFClient, TrendingOFCreator, OnlyFansCreator, CampaignClick, CampaignImpressionDaily, Campaign } from '@/lib/models';
 
 const OFM_CREATORS_SLUG = 'ofm-creators';
-import { addCreatorAlbumPhoto, removeCreatorAlbumPhoto } from '@/lib/actions/creatorImages';
+import { removeAdRotationPhoto } from '@/lib/actions/creatorImages';
+import { buildFullAdRotationAlbum } from '@/lib/ofsearch/adRotationAlbum';
+import { saveAdRotationPhoto } from '@/lib/ofsearch/saveAdRotationPhoto';
 
 /**
  * Slug for the scraped creator, matching how OnlyFansCreator.slug is stored
@@ -16,14 +18,14 @@ function creatorSlug(username: string): string {
 }
 
 /** Resolve the ONE creator album for a username: [avatar, ...extraPhotos]. Index = album position. */
-async function getCreatorAlbum(username: string): Promise<{ slug: string; album: string[] }> {
+async function getCreatorAlbum(username: string): Promise<{ slug: string; album: string[]; avatar: string }> {
   const doc = await OnlyFansCreator.findOne(
     { username: { $regex: new RegExp(`^${(username || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
-    'slug avatar extraPhotos',
+    'slug avatar adRotationPhotos',
   ).lean() as any;
-  if (!doc) return { slug: creatorSlug(username), album: [] };
-  const album = [doc.avatar, ...((doc.extraPhotos as string[]) || [])].filter(Boolean);
-  return { slug: doc.slug || creatorSlug(username), album };
+  if (!doc) return { slug: creatorSlug(username), album: [], avatar: '' };
+  const album = buildFullAdRotationAlbum(doc.avatar, doc.adRotationPhotos);
+  return { slug: doc.slug || creatorSlug(username), album, avatar: doc.avatar || '' };
 }
 
 /** Slugify an agency/model name for clean URLs (e.g. "OF Colombia" -> "of-colombia"). */
@@ -80,7 +82,7 @@ const EMPTY_STAT = (): PeriodStat => ({ total: 0, last24h: 0, last48h: 0, last7d
  *
  * Every click on a creator's ad lives in CampaignClick with a `placement` string. When the surface
  * knows which album image was shown it stamps a ":v{idx}" suffix (idx = position in the full album
- * [avatar, ...extraPhotos], 0 = Default). Clicks WITHOUT a ":v" tag (old history, or any surface that
+ * [avatar, ...adRotationPhotos], 0 = Default). Clicks WITHOUT a ":v" tag (old history, or any surface that
  * didn't pass an index) were shown the Default image → they are credited to image index 0.
  *
  * Result: every click maps to exactly one album image, so the per-image rows ALWAYS sum to the
@@ -383,21 +385,33 @@ export async function updateOFMCreatorSettings(
 /**
  * Add a NEW photo to the creator's ALBUM (the real OnlyFansCreator.extraPhotos), going through
  * the SAME R2 + EXIF branding pipeline as the scraped image. The new photo joins the album and
- * starts rotating in ads immediately. Max 4 total (avatar + 3 uploads) keeps the test focused.
+ * starts rotating in ads immediately. Unlimited uploads; each keeps a stable :v{idx} CTR index.
  */
-export async function addSplitTestImage(token: string, creatorId: string, file: File) {
-  await adminAuth(token);
-  await connectDB();
-  const cr = await TrendingOFCreator.findById(creatorId);
-  if (!cr) throw new Error('Creator not found');
-  const { slug, album } = await getCreatorAlbum(cr.username);
-  if (album.length >= 4) throw new Error('Max 4 album images for split test');
-  const res = await addCreatorAlbumPhoto(slug, file);
-  if ('error' in res) throw new Error(res.error);
-  if (!cr.splitTestStartedAt) {
-    await TrendingOFCreator.findByIdAndUpdate(creatorId, { $set: { splitTestStartedAt: new Date() } });
+export async function addSplitTestImage(
+  token: string,
+  creatorId: string,
+  formData: FormData,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  try {
+    await adminAuth(token);
+    const file = formData.get('file') as File | null;
+    if (!file || typeof (file as File).arrayBuffer !== 'function' || file.size === 0) {
+      return { ok: false, error: 'No image file' };
+    }
+    await connectDB();
+    const cr = await TrendingOFCreator.findById(creatorId);
+    if (!cr) return { ok: false, error: 'Creator not found' };
+    const { slug } = await getCreatorAlbum(cr.username);
+    const res = await saveAdRotationPhoto(slug, file);
+    if ('error' in res) return { ok: false, error: res.error };
+    if (!cr.splitTestStartedAt) {
+      await TrendingOFCreator.findByIdAndUpdate(creatorId, { $set: { splitTestStartedAt: new Date() } });
+    }
+    return { ok: true, url: res.url };
+  } catch (e: any) {
+    console.error('[addSplitTestImage]', creatorId, e);
+    return { ok: false, error: e?.message || 'Upload failed' };
   }
-  return { ok: true, url: res.url };
 }
 
 /** Remove a photo from the creator's album by URL (and clear any paused flag on it). */
@@ -406,8 +420,9 @@ export async function removeSplitTestImage(token: string, creatorId: string, url
   await connectDB();
   const cr = await TrendingOFCreator.findById(creatorId);
   if (!cr) throw new Error('Creator not found');
-  const { slug } = await getCreatorAlbum(cr.username);
-  await removeCreatorAlbumPhoto(slug, url);
+  const { slug, avatar } = await getCreatorAlbum(cr.username);
+  if (url === avatar) throw new Error('Cannot delete the default profile image from here');
+  await removeAdRotationPhoto(slug, url);
   await TrendingOFCreator.findByIdAndUpdate(creatorId, { $pull: { pausedImageUrls: url } });
   return { ok: true };
 }

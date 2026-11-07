@@ -15,6 +15,7 @@ import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { loadHomeDirectoryCategories } from '@/lib/bestDirectory/loadRankings';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
+import { getHomeFeaturedOfCreator } from '@/lib/explore/getHomeFeaturedOfCreator';
 
 export const revalidate = 300;
 
@@ -202,10 +203,12 @@ export default async function Home() {
   const dict = await getDictionary(locale);
   const metaDict = dict.meta || {};
 
-  const [directoryCategories, topGroupCategories, featuredArticles] = await Promise.all([
+  const [directoryCategories, topGroupCategories, featuredArticles, homeFeaturedOf, topBannerCampaigns] = await Promise.all([
     loadHomeDirectoryCategories(),
     getTopGroupCategories(16),
     getPublishedBlogArticles(6),
+    getHomeFeaturedOfCreator(),
+    getActiveCampaigns('top-banner', { page: 'homepage' }).catch(() => []),
   ]);
 
   const jsonLd = {
@@ -259,6 +262,8 @@ export default async function Home() {
           categories={directoryCategories}
           topGroupCategories={topGroupCategories}
           featuredArticles={featuredArticles}
+          homeFeaturedOf={homeFeaturedOf}
+          topBannerCampaigns={topBannerCampaigns}
           locale={locale}
           faq={<HomeFaq />}
         />

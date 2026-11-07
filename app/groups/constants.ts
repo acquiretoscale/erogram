@@ -263,3 +263,18 @@ export function categoryFromSlug(slug: string): string | undefined {
 export const GROUPS_FEED_PAGE_SIZE = 24;
 /** Minimum listings a category needs to appear in the "Trending Group Categories" row. */
 export const TRENDING_CATEGORY_MIN_COUNT = 20;
+
+/** Fixed pill order on /groups "Popular Group Categories" (not count-driven). */
+export const POPULAR_GROUP_CATEGORY_PILLS: readonly string[] = [
+    'Onlyfans',
+    'Latina',
+    'Feet',
+    'MILF',
+    'BDSM',
+    'Fetish',
+    'Cosplay',
+    'Lesbian',
+    'Onlyfans Leaks',
+    'Blowjob',
+    'Telegram-Porn',
+];

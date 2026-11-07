@@ -212,8 +212,9 @@ const FEATURED_HOME_PREVIEWS = new Set([
   'best-vr-porn',
 ]);
 
-export const HOME_FEATURED_PREVIEW = 10;
-export const HOME_DEFAULT_PREVIEW = 10;
+/** Homepage category cards — list preview length (top picks only; keeps cards compact). */
+export const HOME_FEATURED_PREVIEW = 5;
+export const HOME_DEFAULT_PREVIEW = 5;
 export const RANKING_LIMIT = 30;
 
 const COMPANION_DESCRIPTION =

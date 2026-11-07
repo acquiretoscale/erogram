@@ -3,10 +3,28 @@ import sharp from 'sharp';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import jwt from 'jsonwebtoken';
+import connectDB from '@/lib/db/mongodb';
+import { User } from '@/lib/models';
 import { uploadToR2, isR2Configured } from '@/lib/r2';
 import { groupImageR2Key, compressGroupImageBuffer } from '@/lib/images/processGroupImage';
+import { partnerLogoR2Key, compressPartnerLogoBuffer } from '@/lib/images/partnerLogo';
 
 const isVercel = process.env.VERCEL === '1';
+const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+
+async function verifyAdminRequest(req: NextRequest): Promise<boolean> {
+    const auth = req.headers.get('authorization');
+    if (!auth?.startsWith('Bearer ')) return false;
+    try {
+        const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as { id: string };
+        await connectDB();
+        const user = await User.findById(decoded.id).select('isAdmin').lean() as { isAdmin?: boolean } | null;
+        return Boolean(user?.isAdmin);
+    } catch {
+        return false;
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,6 +34,7 @@ export async function POST(req: NextRequest) {
         const nameHint = formData.get('name') as string | null;
         // Optional folder target. 'ainsfw' → SEO name {name}-{category}.webp, capped 100KB.
         // 'groups' → groups/{slug}-porn-telegram-group.webp
+        // 'partners' → partners/{slug}-erogram-partner.webp on R2 (admin only)
         const folder = formData.get('folder') as string | null;
         const categoryHint = formData.get('category') as string | null;
 
@@ -30,10 +49,16 @@ export async function POST(req: NextRequest) {
         const keywordBase = slug(nameHint);
         const isAinsfw = folder === 'ainsfw' && keywordBase;
         const isGroup = folder === 'groups' && keywordBase;
+        const isPartners = folder === 'partners' && keywordBase;
         const ainsfwKey = isAinsfw
             ? `ainsfw/${keywordBase}${categoryHint ? `-${slug(categoryHint)}` : ''}.webp`
             : '';
         const groupKey = isGroup ? groupImageR2Key(keywordBase) : '';
+        const partnersKey = isPartners ? partnerLogoR2Key(keywordBase) : '';
+
+        if (isPartners && !(await verifyAdminRequest(req))) {
+            return NextResponse.json({ message: 'Admin login required' }, { status: 401 });
+        }
 
         if (!file) {
             return NextResponse.json(
@@ -65,10 +90,14 @@ export async function POST(req: NextRequest) {
                 ? `articles/${keywordBase}-${shortId}.${ext}`
                 : `uploads/${randomUUID()}.${ext}`;
 
-        if (isGif && !isAinsfw && !isGroup) {
+        if (isGif && !isAinsfw && !isGroup && !isPartners) {
             finalBuffer = buffer;
             key = basename('gif');
             mime = 'image/gif';
+        } else if (isPartners) {
+            finalBuffer = await compressPartnerLogoBuffer(buffer);
+            key = partnersKey;
+            mime = 'image/webp';
         } else if (isGroup) {
             finalBuffer = await compressGroupImageBuffer(buffer);
             key = groupKey;
@@ -122,11 +151,12 @@ export async function POST(req: NextRequest) {
 
         if (isR2Configured()) {
             url = await uploadToR2(finalBuffer, key, mime);
-        } else if (isVercel) {
+        } else if (isPartners || isVercel) {
             return NextResponse.json(
                 {
-                    message:
-                        'Image upload is not configured. In Vercel, add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL to Environment Variables, then redeploy.',
+                    message: isPartners
+                        ? 'Partner logos must upload to R2. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL in your environment.'
+                        : 'Image upload is not configured. In Vercel, add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_URL to Environment Variables, then redeploy.',
                 },
                 { status: 503 }
             );

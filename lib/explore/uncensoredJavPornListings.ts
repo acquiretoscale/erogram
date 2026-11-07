@@ -6,6 +6,15 @@ const JAV_EXTRA_CATEGORIES = ['best-asian-porn-sites', 'best-premium-asian-porn-
 
 const RAW: ExploreSiteListingBase[] = [
   {
+    slug: 'ikisoda',
+    name: 'Ikisoda',
+    description:
+      'Ikisoda is a broad uncensored JAV tube built for binge browsing rather than a single fetish lane. The homepage pushes latest releases and recently added scenes, with full runs tagged by studio code, performer, channel, and category. Model and tag pages make it easy to follow a girl or a niche without digging through censored reuploads. The interface is available in many languages, and the catalog spans long full-length scenes rather than clipped teasers. It fits the “where do I watch uncensored Japanese porn tonight” search better than a specialty site that only does one act. Free browsing is open; membership unlocks the full stream and steadier access when traffic spikes.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/ikisoda-jav-porn-site.webp',
+    icon: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/ikisoda-jav-porn-site-icon.webp',
+    externalUrl: 'https://ikisoda.com/',
+  },
+  {
     slug: 'spermmania',
     name: 'SpermMania',
     description:

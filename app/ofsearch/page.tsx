@@ -6,7 +6,7 @@ import { OnlyFansCreator } from '@/lib/models';
 import OnlyFansClient from '@/app/ofsearch/OnlyFansClient';
 import { getLocale } from '@/lib/i18n/server';
 import { mainOfMeta } from '@/app/ofsearch/ofMeta';
-import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import { whaleBrowseLikesFilter } from '@/lib/tags/creatorMatch';
 import { detectDeviceFromUserAgent } from '@/lib/utils/device';
 import { getTrendingOnErogram } from '@/lib/actions/publicData';
@@ -50,32 +50,16 @@ export default async function OnlyFansPage({ searchParams }: PageProps) {
     console.error('Failed to fetch OF creators:', e);
   }
 
-  const [topBannerCampaigns, ofSearchFeaturedRaw, trendingOnErogram, communityCreators, topBookmarkedRecent, topLikedCreators, topLikedPhotos] = await Promise.all([
+  const { getTopOfPagesFeaturedCreators } = await import('@/lib/ofsearch/pinnedTopFeaturedCreator');
+  const [topBannerCampaigns, paidFeatured, trendingOnErogram, communityCreators, topBookmarkedRecent, topLikedCreators, topLikedPhotos] = await Promise.all([
     getActiveCampaigns('top-banner', { page: 'onlyfans', device: isMobile ? 'mobile' : 'desktop' }).catch(() => []),
-    getPlacementFeedCampaigns('of-search-featured', 8).catch(() => []),
+    getTopOfPagesFeaturedCreators(),
     getTrendingOnErogram().catch(() => []),
     getNewestOnlyFansCreators(100).catch(() => []),
     getTopCommunityLikedCreators(20).catch(() => []),
     getTopCommunityLikedCreators(20).catch(() => []),
     getTopLikedCreatorPhotos(20).catch(() => []),
   ]);
-  const paidFeatured = (ofSearchFeaturedRaw as any[])
-    .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
-    .map((c) => ({
-      _id: c._id,
-      campaignId: c._id,
-      name: c.name || c.ofUsername || '',
-      username: c.ofUsername || '',
-      avatar: (c.ofAlbum && c.ofAlbum[0]) || c.creative || '',
-      album: c.ofAlbum || [],
-      albumIdx: c.ofAlbumIdx || [],
-      url: c.destinationUrl || '',
-      bio: c.description || '',
-      likesCount: c.ofLikesCount || 0,
-      liveHourStart: c.ofLiveHourStart ?? -1,
-      liveHourEnd: c.ofLiveHourEnd ?? -1,
-      isPaidCampaign: true,
-    }));
 
   return (
     <OnlyFansClient

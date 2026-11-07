@@ -1,6 +1,6 @@
 # The State of Porn on Telegram: What 5 Million Adult Channels Tell Us About the Future of NSFW Content
 
-Something happened to the adult internet in the past two years, and most people outside the industry missed it. While regulators were busy shutting down Pornhub in half the Western world, a quieter migration was underway — tens of millions of users moving toward porn Telegram groups and NSFW Telegram channels as their primary way to discover, consume, and share adult content. Platforms like [Erogram](https://erogram.pro), which now indexes over 10,000 verified porn and NSFW Telegram communities across dozens of categories, exist because this migration created a market that simply didn't exist three years ago. Today, Telegram hosts an estimated 5 million active adult channels. Understanding how that happened — and what it means — requires looking at three forces converging at once.
+Something happened to the adult internet in the past two years, and most people outside the industry missed it. While regulators were busy shutting down Pornhub in half the Western world, a quieter migration was underway — tens of millions of users moving toward porn Telegram groups and NSFW Telegram channels as their primary way to discover, consume, and share adult content. Platforms like [Erogram](https://erogramx.com), which now indexes over 10,000 verified porn and NSFW Telegram communities across dozens of categories, exist because this migration created a market that simply didn't exist three years ago. Today, Telegram hosts an estimated 5 million active adult channels. Understanding how that happened — and what it means — requires looking at three forces converging at once.
 
 ## Force One: The Great Deplatforming
 
@@ -84,7 +84,7 @@ For porn Telegram, that index layer is now emerging.
 
 The most developed example is Erogram, which catalogs over 10,000 verified NSFW Telegram communities organized by category — amateur, anal, BDSM, hentai, lesbian, MILF, threesome, cosplay, and dozens more. The difference between this and a static blog list is structural: listings are verified for activity and safety, categories are browsable by intent, and the index updates daily rather than decaying from the moment it's published.
 
-If you want to understand the difference between the old model and the new one, [browse Erogram's category directory](https://erogram.pro/groups). It's the difference between a card catalog and a pile of loose paper.
+If you want to understand the difference between the old model and the new one, [browse Erogram's category directory](https://erogramx.com/groups). It's the difference between a card catalog and a pile of loose paper.
 
 This shift matters because it changes user behavior. Instead of starting from Google, clicking through three dead links, and settling for whatever works, users start from an organized index and navigate by preference. Discovery goes from luck-based to intent-based. That's the same transition that transformed every other content market.
 

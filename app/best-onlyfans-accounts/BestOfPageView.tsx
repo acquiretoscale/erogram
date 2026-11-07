@@ -13,6 +13,7 @@ import type { Locale } from '@/lib/i18n';
 import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
 import { getBestOfRankingOrganicWithClusterFill, getBestOfRankingOrganicCap } from '@/lib/actions/bestOfCreators';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
+import { getPinnedTopFeaturedOfCreator } from '@/lib/ofsearch/pinnedTopFeaturedCreator';
 import BestPageAdBlock from '@/app/best-onlyfans-accounts/BestPageAdBlock';
 import BestOfDeleteButton from '@/app/best-onlyfans-accounts/BestOfDeleteButton';
 import BestOfProfileButton from '@/app/best-onlyfans-accounts/BestOfProfileButton';
@@ -268,15 +269,68 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const pageContent = resolveBestOfContent(slug, locale, variant);
   const label = getTagLabel(slug, page.label, locale);
 
-  const [bestOfAds, trendingFeatured] = await Promise.all([
+  const [bestOfAds, trendingFeaturedRaw, pinnedTop] = await Promise.all([
     getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
     page.match === 'category' && page.categorySlug
       ? getFeaturedCreatorFeedItems(page.categorySlug).catch(() => [])
       : Promise.resolve([]),
+    getPinnedTopFeaturedOfCreator(),
   ]);
 
-  // ── Promoted (TRENDING) campaigns — up to 3, injected at display slots 1, 6, 13 ──
-  const promoted: any[] = (bestOfAds as any[]).slice(0, 3).map((ad) => {
+  const trendingFeatured = pinnedTop
+    ? [
+        {
+          _id: pinnedTop.campaignId || `of-featured-${pinnedTop.trendingId || pinnedTop.username}`,
+          creative: pinnedTop.avatar,
+          destinationUrl: pinnedTop.url,
+          name: pinnedTop.name,
+          slot: 'feed',
+          feedTier: 1,
+          tierSlot: 2,
+          position: 1,
+          description: pinnedTop.bio,
+          category: 'All',
+          country: 'All',
+          buttonText: 'View Profile',
+          adType: 'onlyfans-creator' as const,
+          ofUsername: pinnedTop.username,
+          ofTrendingId: pinnedTop.trendingId || '',
+          ofLikesCount: pinnedTop.likesCount,
+          ofLiveHourStart: pinnedTop.liveHourStart,
+          ofLiveHourEnd: pinnedTop.liveHourEnd,
+          ofAlbum: pinnedTop.album,
+          ofAlbumIdx: pinnedTop.albumIdx,
+        },
+      ]
+    : trendingFeaturedRaw;
+
+  // ── Promoted (TRENDING) — pinned creator alone at top when configured ──
+  const promoted: any[] = pinnedTop
+    ? [
+        {
+          _id: String(pinnedTop.campaignId || pinnedTop._id),
+          name: pinnedTop.name,
+          username: pinnedTop.username,
+          avatar: pinnedTop.album[0] || pinnedTop.avatar,
+          album: pinnedTop.album,
+          bio: pinnedTop.bio,
+          location: '',
+          likesCount: pinnedTop.likesCount,
+          mediaCount: 0,
+          photosCount: 0,
+          videosCount: 0,
+          postsCount: 0,
+          price: 0,
+          isFree: false,
+          online: pinnedTop.liveHourStart >= 0 && ofIsLiveNow(pinnedTop.liveHourStart, pinnedTop.liveHourEnd),
+          trendPercent: 0,
+          slug: `${pinnedTop.username}-onlyfans`,
+          url: pinnedTop.url,
+          isTrending: true,
+          campaignId: pinnedTop.campaignId ? String(pinnedTop.campaignId) : undefined,
+        },
+      ]
+    : (bestOfAds as any[]).slice(0, 3).map((ad) => {
     const album: string[] = (ad.ofAlbum && ad.ofAlbum.length ? ad.ofAlbum : [ad.creative]).filter(Boolean);
     const onlineNow = ad.ofLiveHourStart >= 0 && ofIsLiveNow(ad.ofLiveHourStart, ad.ofLiveHourEnd);
     return {
@@ -475,10 +529,12 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
               const statBorder = isPromo ? 'rgba(255,255,255,0.10)' : 'rgba(43,27,40,0.10)';
 
               const stats: { label: string; value: string }[] = [];
-              if (totalContent > 0) stats.push({ label: 'Content', value: fmt(totalContent) });
-              if (photos > 0) stats.push({ label: 'Photos', value: fmt(photos) });
-              if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
-              if (posts > 0) stats.push({ label: 'Posts', value: fmt(posts) });
+              if (!isPromo) {
+                if (totalContent > 0) stats.push({ label: 'Content', value: fmt(totalContent) });
+                if (photos > 0) stats.push({ label: 'Photos', value: fmt(photos) });
+                if (videos > 0) stats.push({ label: 'Videos', value: fmt(videos) });
+                if (posts > 0) stats.push({ label: 'Posts', value: fmt(posts) });
+              }
 
               const ofHref = (creator.username || creator.slug)
                 ? ofOutboundUrlFromErogram(creator.username || creator.slug, creator.url)
@@ -539,11 +595,14 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
                             <span className="text-[1rem] font-black leading-none mt-0.5 tabular-nums">{badge.label}</span>
                           </span>
                         )}
-                        {/* Online badge */}
                         {creator.online && (
-                          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg" style={{ backgroundColor: 'rgba(16,185,129,0.95)', color: '#fff' }}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> {dict.bestOnlyfans.liveLabel}
-                          </span>
+                          <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 backdrop-blur-sm">
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-white">{dict.bestOnlyfans.liveLabel}</span>
+                          </div>
                         )}
                       </div>
 

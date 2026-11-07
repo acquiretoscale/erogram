@@ -10,6 +10,7 @@ import {
 } from '@/lib/models';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { isOFUsernameOnExpiredAgencyDeal } from '@/lib/ofExpiry';
+import { buildFullAdRotationAlbum } from '@/lib/ofsearch/adRotationAlbum';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -32,11 +33,13 @@ export async function getTrendingCreators(category?: string) {
   const usernames = activeCreators.map((c) => c.username).filter(Boolean);
   const ofDocs = usernames.length
     ? await OnlyFansCreator.find({ username: { $in: usernames } })
-        .select('username likesCount avatar extraPhotos')
+        .select('username likesCount avatar adRotationPhotos')
         .lean()
     : [];
   const likesMap = new Map((ofDocs as any[]).map((d) => [d.username, d.likesCount ?? 0]));
-  const albumMap = new Map((ofDocs as any[]).map((d) => [d.username, [d.avatar, ...((d.extraPhotos as string[]) || [])].filter(Boolean)]));
+  const albumMap = new Map(
+    (ofDocs as any[]).map((d) => [d.username, buildFullAdRotationAlbum(d.avatar, d.adRotationPhotos)]),
+  );
 
   const mapped = activeCreators.map((c) => {
     // ONE rotating album = scraped avatar + uploaded photos, minus any paused image. Same set the
@@ -112,9 +115,19 @@ export async function getFeaturedCreatorFeedItems(category?: string) {
 
   const usernames = activeCreators.map(c => c.username).filter(Boolean);
   const ofDocs = usernames.length
-    ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount avatar extraPhotos').lean()
+    ? await OnlyFansCreator.find({ username: { $in: usernames } }).select('username likesCount subscriberCount avatar adRotationPhotos').lean()
     : [];
-  const statsMap = new Map((ofDocs as any[]).map(d => [d.username, { likes: d.likesCount || 0, subs: d.subscriberCount || 0, avatar: d.avatar || '', extraPhotos: (d.extraPhotos as string[]) || [] }]));
+  const statsMap = new Map(
+    (ofDocs as any[]).map((d) => [
+      d.username,
+      {
+        likes: d.likesCount || 0,
+        subs: d.subscriberCount || 0,
+        avatar: d.avatar || '',
+        adRotationPhotos: (d.adRotationPhotos as string[]) || [],
+      },
+    ]),
+  );
 
   const shuffled = [...activeCreators];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -154,7 +167,9 @@ export async function getFeaturedCreatorFeedItems(category?: string) {
       // paused images excluded. Parallel arrays so the card can attribute the shown image.
       ...(() => {
         const paused = new Set<string>(c.pausedImageUrls ?? []);
-        const full = (stats ? [stats.avatar, ...stats.extraPhotos] : [c.avatar]).filter(Boolean);
+        const full = stats
+          ? buildFullAdRotationAlbum(stats.avatar, stats.adRotationPhotos)
+          : buildFullAdRotationAlbum(c.avatar, []);
         const ofAlbum: string[] = [];
         const ofAlbumIdx: number[] = [];
         full.forEach((u: string, idx: number) => { if (!paused.has(u)) { ofAlbum.push(u); ofAlbumIdx.push(idx); } });

@@ -116,24 +116,9 @@ export default async function OnlyFansSlugPage({ params }: PageProps) {
   // Unified Ad Network: keyword-targeted of-cat campaigns for this category.
   // onlyfans-creator ads → the paid featured strip (route straight to OnlyFans);
   // any adType → the agnostic 4-ad block injected every 80 results.
+  const { getTopOfPagesFeaturedCreators } = await import('@/lib/ofsearch/pinnedTopFeaturedCreator');
   const ofCatAds = await getKeywordPlacementCampaigns('of-cat', rawSlug, 8).catch(() => []);
-  const paidFeatured = (ofCatAds as any[])
-    .filter((c) => c.adType === 'onlyfans-creator' && (c.creative || c.ofUsername))
-    .map((c) => ({
-      _id: c._id,
-      campaignId: c._id,
-      name: c.name || c.ofUsername || '',
-      username: c.ofUsername || '',
-      avatar: (c.ofAlbum && c.ofAlbum[0]) || c.creative || '',
-      album: c.ofAlbum || [],
-      albumIdx: c.ofAlbumIdx || [],
-      url: c.destinationUrl || '',
-      bio: c.description || '',
-      likesCount: c.ofLikesCount || 0,
-      liveHourStart: c.ofLiveHourStart ?? -1,
-      liveHourEnd: c.ofLiveHourEnd ?? -1,
-      isPaidCampaign: true,
-    }));
+  const paidFeatured = await getTopOfPagesFeaturedCreators();
 
   const cat = OF_CATEGORY_MAP.get(rawSlug)!;
 

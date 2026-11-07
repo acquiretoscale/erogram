@@ -7,6 +7,10 @@ import { slugify } from '@/lib/utils/slugify';
 import { getR2PublicUrl, isR2Configured } from '@/lib/r2';
 import { processAndUploadGroupImage } from '@/lib/images/processGroupImage';
 import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
+import {
+  EROGRAM_OFFICIAL_GROUP_SLUG,
+  EROGRAM_OWNED_GROUP_SLUGS,
+} from '@/lib/groups/erogramOwnedGroups';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
@@ -20,8 +24,13 @@ function resolveImageUrl(stored: string | undefined, origin: string): string {
   return `${origin}/uploads/groups/${stored}`;
 }
 
-/** Never eligible for Top Groups organic slots — stays in the main feed. */
-const TOP_GROUPS_ORGANIC_EXCLUDE_SLUGS = new Set(['hijab-hijabi-girl-muslim-girl-hot-hijabi']);
+/** Never eligible for Top Groups organic slots — stays in the main feed / Featured block. */
+const TOP_GROUPS_ORGANIC_EXCLUDE_SLUGS = new Set([
+  'hijab-hijabi-girl-muslim-girl-hot-hijabi',
+  'booty', // duplicate Booty Bazaar listing
+  EROGRAM_OFFICIAL_GROUP_SLUG,
+  ...EROGRAM_OWNED_GROUP_SLUGS,
+]);
 const TOP_GROUPS_ORGANIC_POOL = 20;
 
 function clicksLast14Days(g: { clickCountByDay?: Record<string, number>; weeklyClicks?: number }): number {
@@ -226,6 +235,61 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Fast path: Erogram-owned channels (Featured block on /groups).
+    if (searchParams.get('ownedFeatured') === 'true') {
+      const owned = await Group.find({
+        status: 'approved',
+        premiumOnly: { $ne: true },
+        slug: { $in: [...EROGRAM_OWNED_GROUP_SLUGS] },
+      })
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks boosted boostExpiresAt paidBoost paidBoostStars topGroupSlot')
+        .lean();
+
+      const order = new Map(EROGRAM_OWNED_GROUP_SLUGS.map((slug, i) => [slug, i]));
+      (owned as any[]).sort(
+        (a, b) => (order.get(a.slug) ?? 99) - (order.get(b.slug) ?? 99),
+      );
+
+      const origin = req.headers.get('x-forwarded-host')
+        ? `https://${req.headers.get('x-forwarded-host')}`
+        : new URL(req.url).origin;
+
+      const reviewMap = await getReviewStatsMap(owned.map((g: any) => g._id));
+
+      return NextResponse.json({
+        groups: (owned as any[]).map((g) => {
+          const cats = g.categories?.length ? g.categories : [g.category, g.country].filter(Boolean);
+          const rs = reviewMap.get(g._id.toString()) || { reviewCount: 0, averageRating: 0 };
+          return {
+            _id: g._id.toString(),
+            name: (g.name || '').slice(0, 150),
+            slug: (g.slug || '').slice(0, 100),
+            category: (g.category || '').slice(0, 50),
+            country: (g.country || '').slice(0, 50),
+            categories: cats,
+            description: localizedDesc(g, locale).slice(0, 150),
+            image: resolveImageUrl(g.image, origin),
+            telegramLink: (g.telegramLink || '').slice(0, 150),
+            isAdvertisement: false,
+            advertisementUrl: null,
+            pinned: false,
+            clickCount: g.clickCount || 0,
+            views: g.views || 0,
+            memberCount: g.memberCount || 0,
+            verified: g.verified || false,
+            paidBoost: g.paidBoost || false,
+            paidBoostStars: g.paidBoostStars ?? null,
+            weeklyClicks: g.weeklyClicks || 0,
+            topGroupSlot: g.topGroupSlot || null,
+            boosted: g.boosted || false,
+            boostExpiresAt: g.boostExpiresAt ? new Date(g.boostExpiresAt).toISOString() : null,
+            averageRating: 5,
+            reviewCount: Math.max(rs.reviewCount, 1),
+          };
+        }),
+      });
+    }
+
     // Fast path: top groups by recent clicks
     // Fetches a larger candidate pool then randomly picks `limit` for variety.
     if (topGroup) {
@@ -310,6 +374,21 @@ export async function GET(req: NextRequest) {
       if (slot2) finalGroups.push(slot2);
       for (const g of organicPool) {
         if (!reservedIds.has(g._id.toString())) finalGroups.push(g);
+      }
+
+      const officialGroup = await Group.findOne({
+        status: 'approved',
+        slug: EROGRAM_OFFICIAL_GROUP_SLUG,
+        premiumOnly: { $ne: true },
+      })
+        .select('name slug category country categories description description_de description_es image telegramLink clickCount views memberCount verified weeklyClicks boosted boostExpiresAt paidBoost paidBoostStars topGroupSlot')
+        .lean();
+
+      if (
+        officialGroup &&
+        !finalGroups.some((g) => g.slug === EROGRAM_OFFICIAL_GROUP_SLUG)
+      ) {
+        finalGroups.push(officialGroup);
       }
 
       const origin = req.headers.get('x-forwarded-host')

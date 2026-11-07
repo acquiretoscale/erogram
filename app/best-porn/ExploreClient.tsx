@@ -12,6 +12,7 @@ import { exploreSiteKey } from '@/lib/explore/siteKey';
 import { addExploreSite, loadExploreCategoriesForAdmin, removeExploreSite, saveExploreCategoryOrder, setExploreCategoryListed } from '@/lib/actions/exploreAdmin';
 import { isExploreCategoryListed } from '@/lib/explore/applyExploreAdmin';
 import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
+import { exploreSiteOutboundRel } from '@/lib/explore/exploreOutboundRel';
 
 const ACCENT = '#c0392f';
 const FEATURED_PREVIEW = 10;
@@ -132,7 +133,7 @@ function SiteNameLink({ site, featured = false }: { site: ExploreSite; featured?
 
   if (opensOutboundInNewTab(site)) {
     return (
-      <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={className}>
+      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
         {site.name}
       </a>
     );
@@ -498,7 +499,7 @@ function CategoryCard({
                       <a
                         href={href}
                         target={newTab ? '_blank' : undefined}
-                        rel={newTab ? 'nofollow noopener noreferrer' : undefined}
+                        rel={newTab ? exploreSiteOutboundRel(site) : undefined}
                         className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
                       >
                         <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>

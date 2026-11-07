@@ -1,6 +1,6 @@
 # Porn Telegram in 2026: 5 Million Channels, One Discovery Problem
 
-Telegram crossed 1 billion monthly active users in early 2025. Somewhere inside that number — buried between crypto channels, news feeds, and group chats — sits a parallel economy that nobody in mainstream tech wants to talk about: porn Telegram. An estimated 5 million active adult channels and groups now operate on the platform, according to a CyberNews study, making Telegram the single largest unmoderated distribution network for NSFW content on the internet. And yet, for the millions of users trying to navigate this ecosystem, discovery remains fundamentally broken. That's the gap platforms like [Erogram](https://erogram.pro) — a directory that indexes over 10,000 verified porn and NSFW Telegram groups by category — are built to close.
+Telegram crossed 1 billion monthly active users in early 2025. Somewhere inside that number — buried between crypto channels, news feeds, and group chats — sits a parallel economy that nobody in mainstream tech wants to talk about: porn Telegram. An estimated 5 million active adult channels and groups now operate on the platform, according to a CyberNews study, making Telegram the single largest unmoderated distribution network for NSFW content on the internet. And yet, for the millions of users trying to navigate this ecosystem, discovery remains fundamentally broken. That's the gap platforms like [Erogram](https://erogramx.com) — a directory that indexes over 10,000 verified porn and NSFW Telegram groups by category — are built to close.
 
 Here's how we got here, what the numbers actually say, and why the next phase of this market isn't about content — it's about organization.
 
@@ -92,9 +92,9 @@ Porn Telegram is at that exact inflection point.
 
 The first generation of solutions was just blog posts — static lists that decayed immediately. The second generation is directories: platforms that actively index, categorize, verify, and update their listings.
 
-[Erogram](https://erogram.pro) is the clearest example of this model in action. It indexes over 10,000 porn and NSFW Telegram groups, organized into dozens of browsable categories — from amateur and anal to BDSM, lesbian, MILF, hentai, and beyond. Groups are verified for activity and safety. The index updates daily, which means the dead-link problem that plagues every static list simply doesn't apply.
+[Erogram](https://erogramx.com) is the clearest example of this model in action. It indexes over 10,000 porn and NSFW Telegram groups, organized into dozens of browsable categories — from amateur and anal to BDSM, lesbian, MILF, hentai, and beyond. Groups are verified for activity and safety. The index updates daily, which means the dead-link problem that plagues every static list simply doesn't apply.
 
-You can [browse the full directory by category](https://erogram.pro/groups) to see what structured discovery looks like versus the chaos of random link-hunting.
+You can [browse the full directory by category](https://erogramx.com/groups) to see what structured discovery looks like versus the chaos of random link-hunting.
 
 The shift is fundamental. Instead of starting from a search engine and hoping to land on a working invite link, users start from an organized index and navigate by intent. It's the difference between Googling "good restaurant" and opening a curated guide for your neighborhood.
 

@@ -542,6 +542,8 @@ export async function adminUpdateSubmission(
 
 export async function adminApprovePaidAinsfwListing(id: string): Promise<AdminSubmission | null> {
   await connectDB();
+  const before = await AINsfwSubmission.findById(id).lean() as any;
+  if (!before) return null;
   const now = new Date();
   const doc = await AINsfwSubmission.findByIdAndUpdate(
     id,
@@ -561,11 +563,13 @@ export async function adminApprovePaidAinsfwListing(id: string): Promise<AdminSu
     await adminSetFeatured(doc.slug, true);
   }
   const plan = doc.submissionTier || 'basic';
+  const hadPaidBefore =
+    before.paymentStatus === 'paid' || !!before.awaitingAdminReview || !!before.paymentId;
   const hasSaleEvent = await PremiumEvent.exists({
     event: 'submission_payment_success',
     reason: { $regex: new RegExp(id) },
   });
-  if (!hasSaleEvent) {
+  if (hadPaidBefore && !hasSaleEvent) {
     const { AINSFW_PLAN_PRICES } = await import('@/lib/ainsfw/planPrices');
     const usd = AINSFW_PLAN_PRICES[plan as keyof typeof AINSFW_PLAN_PRICES] ?? 97;
     await PremiumEvent.create({

@@ -55,6 +55,7 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Editable fields
@@ -107,15 +108,19 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
 
   const onUpload = async (file: File) => {
     if (!data) return;
+    setUploadError('');
     setUploading(true);
     try {
-      // Goes through the SAME R2 + EXIF pipeline as scraped photos and joins the creator album.
       const fd = new FormData();
       fd.append('file', file);
-      await addSplitTestImage(tok(), data.model._id, fd.get('file') as File);
+      const res = await addSplitTestImage(tok(), data.model._id, fd);
+      if (!res.ok) {
+        setUploadError(res.error);
+        return;
+      }
       await reload();
     } catch (e) {
-      alert((e as Error).message);
+      setUploadError((e as Error).message || 'Upload failed');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -139,6 +144,8 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
   }
 
   const m = data.model;
+  const defaultPicture = data.pictures.find((p) => p.index === 0);
+  const testPictures = data.pictures.filter((p) => p.index > 0);
   const stats = [
     { label: '24h', value: data.last24h },
     { label: '48h', value: data.last48h },
@@ -261,7 +268,7 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
         <div className="bg-[#0e1018] border border-white/[0.06] rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black uppercase tracking-wider text-white/50">Creator album — split test (up to 4)</h2>
+              <h2 className="text-sm font-black uppercase tracking-wider text-white/50">Ad split test — unlimited slots</h2>
               {data.activeCount > 1 && (
                 <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded uppercase tracking-wider">{data.activeCount} live · rotating</span>
               )}
@@ -276,21 +283,83 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {data.pictures.map((p) => {
+          {defaultPicture?.url ? (
+            <div
+              className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+                defaultPicture.paused ? 'border-white/10 bg-white/[0.02] opacity-70' : 'border-white/15 bg-white/[0.04]'
+              }`}
+            >
+              <img
+                src={defaultPicture.url}
+                alt="Profile default"
+                className="w-14 h-14 rounded-lg object-cover bg-white/5 shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black text-white/80">Profile default (index 0)</p>
+                <p className="text-[10px] text-white/40">
+                  Stays on her OF page — exclude it from ad rotation to test only your uploads. Clicks still tagged :v0.
+                </p>
+                <p className="text-[10px] text-white/30 mt-0.5">
+                  {fmt(defaultPicture.total)} clicks · +{fmt(defaultPicture.last24h)} 24h
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {defaultPicture.paused ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await toggleVariantPause(tok(), m._id, defaultPicture.url, false);
+                      await reload();
+                    }}
+                    className="text-[10px] font-black px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                  >
+                    Include in ads
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await toggleVariantPause(tok(), m._id, defaultPicture.url, true);
+                      await reload();
+                    }}
+                    className="text-[10px] font-black px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/15"
+                  >
+                    Remove from test
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+            {testPictures.map((p) => {
               const isPaused = p.paused;
-              const isLeader = data.winnerIndex === p.index; // leading by clicks among active
+              const isLeader = data.winnerIndex === p.index;
               return (
-                <div key={p.index} className={`relative rounded-xl overflow-hidden border-2 ${isPaused ? 'border-white/[0.06] opacity-50' : isLeader ? 'border-[#00AFF0]' : 'border-emerald-500/40'}`}>
-                  {p.url
-                    ? <img src={p.url} alt={p.label} className="w-full aspect-[3/4] object-cover bg-white/5" />
-                    : <div className="w-full aspect-[3/4] bg-white/5 flex items-center justify-center text-white/20 text-xs">no image</div>}
+                <div
+                  key={p.index}
+                  className={`relative rounded-xl overflow-hidden border-2 ${
+                    isPaused ? 'border-white/[0.06] opacity-50' : isLeader ? 'border-[#00AFF0]' : 'border-emerald-500/40'
+                  }`}
+                >
+                  {p.url ? (
+                    <img src={p.url} alt={p.label} className="w-full aspect-[3/4] object-cover bg-white/5" />
+                  ) : (
+                    <div className="w-full aspect-[3/4] bg-white/5 flex items-center justify-center text-white/20 text-xs">
+                      no image
+                    </div>
+                  )}
                   <div className="absolute top-1.5 left-1.5 flex gap-1 flex-wrap">
                     <span className="text-[9px] font-black bg-black/70 px-1.5 py-0.5 rounded">{p.label}</span>
-                    {isPaused
-                      ? <span className="text-[9px] font-black bg-white/20 text-white px-1.5 py-0.5 rounded">PAUSED</span>
-                      : <span className="text-[9px] font-black bg-emerald-500/80 text-black px-1.5 py-0.5 rounded">LIVE</span>}
-                    {!isPaused && isLeader && <span className="text-[9px] font-black bg-[#00AFF0] text-black px-1.5 py-0.5 rounded">LEADING</span>}
+                    <span className="text-[9px] font-black bg-black/70 px-1.5 py-0.5 rounded">v{p.index}</span>
+                    {isPaused ? (
+                      <span className="text-[9px] font-black bg-white/20 text-white px-1.5 py-0.5 rounded">PAUSED</span>
+                    ) : (
+                      <span className="text-[9px] font-black bg-emerald-500/80 text-black px-1.5 py-0.5 rounded">LIVE</span>
+                    )}
+                    {!isPaused && isLeader && (
+                      <span className="text-[9px] font-black bg-[#00AFF0] text-black px-1.5 py-0.5 rounded">LEADING</span>
+                    )}
                   </div>
                   <div className="p-2 bg-[#0a0d14]">
                     <div className="flex items-center justify-between text-[10px] text-white/40">
@@ -298,39 +367,53 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
                       <span className="text-emerald-400">+{fmt(p.last24h)} 24h</span>
                     </div>
                     <div className="flex gap-1 mt-1.5">
-                      {/* Pause / resume ANY variant — including the default avatar. Active ones rotate. */}
                       <button
-                        onClick={async () => { await toggleVariantPause(tok(), m._id, p.url, !isPaused); await reload(); }}
-                        className={`flex-1 text-[10px] font-black py-1 rounded ${isPaused ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : 'bg-white/10 text-white/60 hover:bg-white/15'}`}
+                        type="button"
+                        onClick={async () => {
+                          await toggleVariantPause(tok(), m._id, p.url, !isPaused);
+                          await reload();
+                        }}
+                        className={`flex-1 text-[10px] font-black py-1 rounded ${
+                          isPaused
+                            ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                            : 'bg-white/10 text-white/60 hover:bg-white/15'
+                        }`}
                       >
                         {isPaused ? 'Resume' : 'Pause'}
                       </button>
-                      {p.index >= 1 && (
-                        <button
-                          onClick={async () => { if (!confirm(`Delete image ${p.label} from the album?`)) return; await removeSplitTestImage(tok(), m._id, p.url); await reload(); }}
-                          className="text-[10px] font-black py-1 px-2 rounded bg-white/5 text-white/40 hover:text-red-400"
-                          title="Delete this image"
-                        >
-                          ✕
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Delete ${p.label} from ad test?`)) return;
+                          await removeSplitTestImage(tok(), m._id, p.url);
+                          await reload();
+                        }}
+                        className="text-[10px] font-black py-1 px-2 rounded bg-white/5 text-white/40 hover:text-red-400"
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 </div>
               );
             })}
 
-            {m.album.length < 4 && (
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="rounded-xl border-2 border-dashed border-white/10 aspect-[3/4] flex flex-col items-center justify-center gap-2 text-white/30 hover:text-white/60 hover:border-white/20 transition disabled:opacity-50"
-              >
-                {uploading
-                  ? <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-[#00AFF0]" />
-                  : <><span className="text-3xl font-thin">+</span><span className="text-[11px] font-bold">Add to album</span></>}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="rounded-xl border-2 border-dashed border-white/10 aspect-[3/4] flex flex-col items-center justify-center gap-2 text-white/30 hover:text-white/60 hover:border-white/20 transition disabled:opacity-50"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-[#00AFF0]" />
+              ) : (
+                <>
+                  <span className="text-3xl font-thin">+</span>
+                  <span className="text-[11px] font-bold">Add test image</span>
+                </>
+              )}
+            </button>
           </div>
 
           <input
@@ -340,9 +423,13 @@ export default function OFMModelDetail({ agencySlug, modelSlug }: { agencySlug: 
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }}
           />
-          <p className="text-[11px] text-white/25">
-            One album: the Default is the scraped profile photo; added images join the SAME creator album (also shown on the public profile). Every LIVE image rotates across the network and earns real clicks (LEADING = most so far). Pause ANY image to take it out of rotation; the rest keep running. To run only your favourite, pause the others. Delete removes an uploaded photo from the album for good.
-          </p>
+          {uploadError ? (
+            <p className="text-sm font-semibold text-red-400">{uploadError}</p>
+          ) : (
+            <p className="text-[11px] text-white/25">
+              Unlimited test images — WebP on R2. Each slot keeps a stable index for future daily CTR ( :v0 = default, :v1+ = uploads).
+            </p>
+          )}
         </div>
       </div>
     </div>

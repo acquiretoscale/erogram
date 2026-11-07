@@ -313,6 +313,7 @@ export function getFullReview(slug: string): AINsfwFullReview | undefined {
 export const AINSFW_PAID_CLIENTS = [
   { slug: 'hornydreams-ai-ai-girlfriend', goLive: '2026-09-13T00:00:00.000Z' },
   { slug: 'aislutbot-ai-nude-generator', goLive: '2026-09-05T12:00:00.000Z' },
+  { slug: 'museher-ai-porn-generator', goLive: '2026-11-07T00:00:00.000Z' },
   { slug: 'flick-ai-ai-porn-generator', goLive: '2026-08-12T00:00:00.000Z' },
   { slug: 'clothoff-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },
   { slug: 'nudiva-undress-ai', goLive: '2026-08-05T00:00:00.000Z' },

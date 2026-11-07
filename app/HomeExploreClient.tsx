@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import HeaderBanner from '@/components/HeaderBanner';
 import HomeBlogCard from '@/app/components/HomeBlogCard';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { Locale } from '@/lib/i18n/config';
@@ -13,7 +14,10 @@ import type { ExploreCategory, ExploreSite } from '@/lib/explore/topPornSitesDat
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
 import { HOME_DIRECTORY_GROUPS, HOME_LEADER_PREVIEW_SLUGS, homePreviewLimit } from '@/lib/bestDirectory/config';
+import type { HomeFeaturedOfCreator } from '@/lib/explore/homeFeaturedOfCreator';
+import HomeOfFeaturedCreatorCard from '@/app/components/HomeOfFeaturedCreatorCard';
 import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
+import { exploreSiteOutboundRel } from '@/lib/explore/exploreOutboundRel';
 
 const ACCENT = '#c0392f';
 const MASCOT_SIZE = 52;
@@ -64,15 +68,19 @@ function isInternalExploreUrl(url: string): boolean {
   return url.startsWith('/');
 }
 
-function outboundHref(site: ExploreSite): string {
+/** Homepage listings always stay on EROgram when we have an internal page. */
+function listingHref(site: ExploreSite): string {
+  if (isInternalExploreUrl(site.url)) return site.url;
   return site.externalUrl ?? site.url;
 }
 
-function opensOutboundInNewTab(site: ExploreSite): boolean {
-  return Boolean(site.externalUrl) || site.openInNewTab || !isInternalExploreUrl(outboundHref(site));
+function opensListingInNewTab(site: ExploreSite): boolean {
+  const href = listingHref(site);
+  if (isInternalExploreUrl(href)) return Boolean(site.openInNewTab);
+  return true;
 }
 
-function showDetailIcon(site: ExploreSite): boolean {
+function showExternalShortcut(site: ExploreSite): boolean {
   return Boolean(site.externalUrl && isInternalExploreUrl(site.url));
 }
 
@@ -117,11 +125,11 @@ function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boole
 function SiteNameLink({ site }: { site: ExploreSite }) {
   const className =
     'min-w-0 text-[15px] font-semibold leading-tight text-gray-900 hover:text-[#c0392f] transition-colors truncate';
-  const href = outboundHref(site);
+  const href = listingHref(site);
 
-  if (opensOutboundInNewTab(site)) {
+  if (opensListingInNewTab(site)) {
     return (
-      <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={className}>
+      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
         {site.name}
       </a>
     );
@@ -134,21 +142,22 @@ function SiteNameLink({ site }: { site: ExploreSite }) {
   );
 }
 
-function SiteDetailIcon({ site }: { site: ExploreSite }) {
-  if (!showDetailIcon(site)) return null;
+function SiteExternalShortcut({ site }: { site: ExploreSite }) {
+  if (!showExternalShortcut(site) || !site.externalUrl) return null;
 
   return (
-    <Link
-      href={site.url}
+    <a
+      href={site.externalUrl}
       target="_blank"
-      rel="noopener noreferrer"
+      rel={exploreSiteOutboundRel(site)}
       className="shrink-0 ml-1 p-1 rounded-md text-[#c0392f]/70 hover:text-[#c0392f] hover:bg-red-100/80 transition-all opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-      aria-label={`${site.name} details`}
+      aria-label={`Visit ${site.name} website`}
+      onClick={(e) => e.stopPropagation()}
     >
       <svg
         viewBox="0 0 24 24"
-        width={18}
-        height={18}
+        width={16}
+        height={16}
         fill="none"
         stroke="currentColor"
         strokeWidth={2}
@@ -156,16 +165,17 @@ function SiteDetailIcon({ site }: { site: ExploreSite }) {
         strokeLinejoin="round"
         aria-hidden
       >
-        <circle cx="11" cy="11" r="7" />
-        <path d="M20 20l-3.5-3.5" />
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+        <path d="M15 3h6v6" />
+        <path d="M10 14 21 3" />
       </svg>
-    </Link>
+    </a>
   );
 }
 
 function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; categorySlug: string }) {
-  const href = outboundHref(site);
-  const newTab = opensOutboundInNewTab(site);
+  const href = listingHref(site);
+  const newTab = opensListingInNewTab(site);
   const pickLabel = site.featured ? pickLabelForFirstPick(categorySlug) : null;
   const inner = (
     <>
@@ -195,7 +205,7 @@ function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; category
 
   if (newTab) {
     return (
-      <a href={href} target="_blank" rel="nofollow noopener noreferrer" className={className}>
+      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
         {inner}
       </a>
     );
@@ -234,6 +244,7 @@ function CategoryCard({
   category: ExploreCategory;
   categoryIndex: number;
 }) {
+  const lp = useLocalePath();
   const previewLimit = homePreviewLimit(category.slug);
   const total = category.sites.length;
   const visible = total <= previewLimit ? category.sites : category.sites.slice(0, previewLimit);
@@ -248,7 +259,7 @@ function CategoryCard({
   return (
     <section
       id={category.slug}
-      className={`mb-4 rounded-2xl border bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] ${
+      className={`mb-4 h-full rounded-2xl border bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] ${
         leaderSite ? 'border-[#c0392f]/45 ring-1 ring-[#c0392f]/20' : 'border-[#c0392f]/20'
       }`}
     >
@@ -287,28 +298,39 @@ function CategoryCard({
                   : null;
 
               if (site.featured) {
-                const href = outboundHref(site);
-                const newTab = opensOutboundInNewTab(site);
+                const href = listingHref(site);
+                const newTab = opensListingInNewTab(site);
+                const rowInner = (
+                  <>
+                    <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
+                    <SiteFavicon site={site} large />
+                    <span className="min-w-0 text-[16px] font-black leading-tight text-gray-900 truncate group-hover:text-[#c0392f] transition-colors">
+                      {site.name}
+                    </span>
+                    {pickLabel ? (
+                      <span className="shrink-0 ml-auto text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
+                        {pickLabel}
+                      </span>
+                    ) : null}
+                  </>
+                );
                 return (
                   <li key={`${category.slug}-${site.name}-${index}`} style={{ height: `${rowHeight}px` }}>
                     <div className={`${rowClass} h-full`}>
-                      <a
-                        href={href}
-                        target={newTab ? '_blank' : undefined}
-                        rel={newTab ? 'nofollow noopener noreferrer' : undefined}
-                        className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
-                      >
-                        <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
-                        <SiteFavicon site={site} large />
-                        <span className="min-w-0 text-[16px] font-black leading-tight text-gray-900 truncate group-hover:text-[#c0392f] transition-colors">
-                          {site.name}
-                        </span>
-                        {pickLabel ? (
-                          <span className="shrink-0 ml-auto text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
-                            {pickLabel}
-                          </span>
-                        ) : null}
-                      </a>
+                      {newTab ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel={exploreSiteOutboundRel(site)}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
+                        >
+                          {rowInner}
+                        </a>
+                      ) : (
+                        <Link href={href} className="flex items-center gap-2.5 min-w-0 flex-1 h-full">
+                          {rowInner}
+                        </Link>
+                      )}
                     </div>
                   </li>
                 );
@@ -323,7 +345,7 @@ function CategoryCard({
                   <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
                   <SiteFavicon site={site} />
                   <SiteNameLink site={site} />
-                  <SiteDetailIcon site={site} />
+                  <SiteExternalShortcut site={site} />
                 </li>
               );
             })
@@ -332,7 +354,7 @@ function CategoryCard({
       </div>
 
       <Link
-        href={`/${category.slug}`}
+        href={lp(`/${category.slug}`)}
         className="block w-full py-2.5 px-3 text-[11px] font-black tracking-[0.14em] uppercase text-white text-center border-t border-[#c0392f]/20 hover:opacity-90"
         style={{ background: ACCENT }}
       >
@@ -346,12 +368,16 @@ export default function HomeExploreClient({
   categories,
   topGroupCategories = [],
   featuredArticles = [],
+  homeFeaturedOf = null,
+  topBannerCampaigns = [],
   locale = 'en',
   faq,
 }: {
   categories: ExploreCategory[];
   topGroupCategories?: TopGroupCategory[];
   featuredArticles?: BlogCard[];
+  homeFeaturedOf?: HomeFeaturedOfCreator | null;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   locale?: Locale;
   faq?: ReactNode;
 }) {
@@ -365,25 +391,25 @@ export default function HomeExploreClient({
       title: 'Telegram Groups',
       href: lp('/groups'),
       iconColor: '#000',
-      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
     },
     {
       title: 'Telegram Bots',
       href: lp('/bots'),
       iconColor: '#000',
-      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
     },
     {
       title: 'AI NSFW Tools',
       href: lp('/ainsfw'),
       iconColor: '#000',
-      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="16" height="16" style={{ objectFit: 'contain' }} />,
+      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="20" height="20" style={{ objectFit: 'contain' }} />,
     },
     {
       title: 'Porn Websites',
       href: lp('/best-porn'),
       iconColor: '#000',
-      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></svg>,
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></svg>,
     },
   ];
 
@@ -399,7 +425,7 @@ export default function HomeExploreClient({
         <span className="hero-nav-card__top">
           <span className="hero-nav-card__bare" style={{ color: c.iconColor }}>{c.icon}</span>
           <span className="hero-nav-card__title">{c.title}</span>
-          <svg className="hero-nav-card__arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+          <svg className="hero-nav-card__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
         </span>
       </span>
     </button>
@@ -411,10 +437,9 @@ export default function HomeExploreClient({
       <Navbar accent={ACCENT} />
 
       <div className="relative z-10 home-hero-section">
-        <div className="home-hero-overlay" aria-hidden="true" />
         <div className="relative z-[1] max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-28 sm:pt-32 pb-10 sm:pb-12">
           <div className="text-center max-w-4xl mx-auto mb-5 sm:mb-6">
-            <h1 className="home-hero-title text-[30px] sm:text-[44px] md:text-[54px] mb-4 sm:mb-5">
+            <h1 className="home-hero-title text-[15px] sm:text-[22px] md:text-[27px] mb-4 sm:mb-5">
               <span className="home-hero-title-mark">Your #1 ADULT entretainement platform</span>
             </h1>
             <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[14px] sm:text-[15px] md:text-base text-white leading-relaxed font-medium">
@@ -442,39 +467,108 @@ export default function HomeExploreClient({
           <div className="hero-nav-row">
             {navCards.map(renderCard)}
           </div>
+          <div className="w-full mt-5 sm:mt-6">
+            <HeaderBanner campaigns={topBannerCampaigns} />
+          </div>
         </div>
       </div>
 
       <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-8 sm:pt-10 pb-16">
         <div className="space-y-8 sm:space-y-10">
-          {HOME_DIRECTORY_GROUPS.map((group) => {
+          {HOME_DIRECTORY_GROUPS.map((group, groupIndex) => {
             const row = group.slugs
               .map((slug) => bySlug.get(slug))
               .filter((category): category is ExploreCategory => Boolean(category));
             if (row.length === 0) return null;
+            const injectOfCard = groupIndex === 0 && homeFeaturedOf;
+            const nextGroup = HOME_DIRECTORY_GROUPS[groupIndex + 1];
+            const mergeTelegramBesideOrphan =
+              groupIndex === 0 &&
+              Boolean(injectOfCard) &&
+              nextGroup?.heading === 'Best Telegram bots';
+            const telegramBesideOrphan =
+              mergeTelegramBesideOrphan && nextGroup
+                ? nextGroup.slugs
+                    .map((slug) => bySlug.get(slug))
+                    .filter((category): category is ExploreCategory => Boolean(category))
+                : [];
+            const skipTelegramGroupOnXl =
+              groupIndex === 1 &&
+              Boolean(homeFeaturedOf) &&
+              group.heading === 'Best Telegram bots';
+
+            const buildCategoryCells = (categoriesRow: ExploreCategory[]) =>
+              categoriesRow.flatMap((category, rowIndex) => {
+                const categoryIndex = categories.findIndex((entry) => entry.slug === category.slug);
+                const cells: React.ReactNode[] = [
+                  <CategoryCard
+                    key={category.slug}
+                    category={category}
+                    categoryIndex={categoryIndex}
+                  />,
+                ];
+                if (injectOfCard && rowIndex === 0) {
+                  cells.push(
+                    <HomeOfFeaturedCreatorCard key="home-featured-of" creator={homeFeaturedOf!} />,
+                  );
+                }
+                return cells;
+              });
+
+            const allCells = buildCategoryCells(row);
+            const sectionHeadingClass =
+              'text-white font-black tracking-[0.08em] uppercase text-sm sm:text-base mb-4';
+
             return (
               <div
                 key={group.heading || group.slugs.join('-')}
                 id={group.heading === 'Best Adult websites' ? 'best-porn' : undefined}
-                className={group.heading === 'Best Adult websites' ? 'scroll-mt-28' : undefined}
+                className={[
+                  group.heading === 'Best Adult websites' ? 'scroll-mt-28' : undefined,
+                  skipTelegramGroupOnXl ? 'xl:hidden' : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined}
               >
-                {group.heading ? (
-                  <h2 className="text-white font-black tracking-[0.08em] uppercase text-sm sm:text-base mb-4">
-                    {group.heading}
-                  </h2>
-                ) : null}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                  {row.map((category) => {
-                    const categoryIndex = categories.findIndex((entry) => entry.slug === category.slug);
-                    return (
-                      <CategoryCard
-                        key={category.slug}
-                        category={category}
-                        categoryIndex={categoryIndex}
-                      />
-                    );
-                  })}
-                </div>
+                {group.heading ? <h2 className={sectionHeadingClass}>{group.heading}</h2> : null}
+                {mergeTelegramBesideOrphan && telegramBesideOrphan.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:hidden gap-4 items-stretch">
+                      {allCells}
+                    </div>
+                    <div className="hidden xl:block space-y-4">
+                      <div className="grid grid-cols-4 gap-4 items-stretch">{allCells.slice(0, 4)}</div>
+                      <div className="grid grid-cols-4 grid-rows-[auto_1fr] gap-x-4 gap-y-4 items-stretch">
+                        <div className="col-start-2 col-span-3 row-start-1 grid grid-cols-2 gap-x-4">
+                          <h2 className={`col-start-1 ${sectionHeadingClass} mb-0`}>
+                            {nextGroup!.heading}
+                          </h2>
+                        </div>
+                        <div className="col-start-1 row-start-2 h-full min-h-0 [&_section]:mb-0 [&_section]:h-full">
+                          {allCells[4]}
+                        </div>
+                        <div className="col-start-2 col-span-3 row-start-2 grid grid-cols-2 gap-4 items-stretch h-full [&_section]:mb-0 [&_section]:h-full">
+                          {telegramBesideOrphan.map((category) => {
+                            const categoryIndex = categories.findIndex(
+                              (entry) => entry.slug === category.slug,
+                            );
+                            return (
+                              <CategoryCard
+                                key={category.slug}
+                                category={category}
+                                categoryIndex={categoryIndex}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+                    {allCells}
+                  </div>
+                )}
               </div>
             );
           })}

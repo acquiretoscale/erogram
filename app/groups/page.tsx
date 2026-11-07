@@ -12,7 +12,7 @@ import { listR2Files } from '@/lib/r2';
 import type { StoryCategory, StoryMediaSlide } from './types';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
-import { filterCategories, GROUPS_FEED_PAGE_SIZE, TRENDING_CATEGORY_MIN_COUNT } from './constants';
+import { filterCategories, GROUPS_FEED_PAGE_SIZE, POPULAR_GROUP_CATEGORY_PILLS } from './constants';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const canonicalBase = CANONICAL_BASE;
@@ -67,18 +67,13 @@ async function getFilterOptions(): Promise<{ categories: string[]; countries: st
   }
 }
 
-// Trending group categories: EVERY content category with 20+ listings (public + vault),
-// highest count first. Each links to the /groups feed filtered to that category
-// (newest-first) as a crawlable, descriptive category view so Google understands
-// the topic + depth. Fully dynamic — grows as categories cross the threshold.
-function toTrendingCategoryLinks(categoryCounts: Array<{ name: string; count: number }>): Array<{ label: string; title: string; href: string }> {
-  return categoryCounts
-    .filter((c) => c.count >= TRENDING_CATEGORY_MIN_COUNT)
-    .map((c) => ({
-      label: c.name,
-      title: `${c.name} Telegram groups`,
-      href: `/groups?category=${encodeURIComponent(c.name)}`,
-    }));
+// Popular group category pills — fixed curator list (see POPULAR_GROUP_CATEGORY_PILLS).
+function toTrendingCategoryLinks(): Array<{ label: string; title: string; href: string }> {
+  return POPULAR_GROUP_CATEGORY_PILLS.map((name) => ({
+    label: name,
+    title: `${name} Telegram groups`,
+    href: `/groups?category=${encodeURIComponent(name)}`,
+  }));
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -551,7 +546,7 @@ export async function GroupsPageView({ page = 1 }: { page?: number }) {
     getLinkedOFCreatorClaimKeys(),
   ]);
 
-  const trendingCategories = toTrendingCategoryLinks(filterOpts.categoryCounts);
+  const trendingCategories = toTrendingCategoryLinks();
 
   // AGNOSTIC SLOTS: every ad — including OF creators assigned in /admin/ad-network —
   // keeps its assigned slot and rotates with any other adType in that slot.

@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
 
   turbopack: {},
 
-  serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg'],
+  serverExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'sharp'],
 
   webpack: (config) => {
     return config;

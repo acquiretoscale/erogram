@@ -95,6 +95,13 @@ export const REMAINING_CATEGORY_LISTING_GROUPS: ExploreCategoryListingGroup[] = 
     "categoryTitle": "Best Asian Porn Sites",
     "listings": [
       {
+        "slug": "ikisoda",
+        "name": "Ikisoda",
+        "description": "Ikisoda is an uncensored JAV tube with full-length Japanese scenes, model and tag pages, multi-language browsing, and daily latest-release updates. Built for viewers who want a wide catalog without mosaic, not a single-fetish boutique.",
+        "image": "https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/explore/ikisoda-best-asian-porn-sites.webp",
+        "externalUrl": "https://ikisoda.com/"
+      },
+      {
         "slug": "zenra",
         "name": "Zenra",
         "description": "Amazing asian porn site providing free hardcore JAV videos in streaming, with daily updates and real original full movies with subtitles, for the real asian porn enthusiasts.",

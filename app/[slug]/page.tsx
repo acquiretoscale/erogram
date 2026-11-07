@@ -31,6 +31,8 @@ import { isBlacklistedPublicPathSegment } from '@/lib/ofsearch/creatorBlacklist'
 import ExploreSiteListingClient from '@/app/best-porn/[slug]/ExploreSiteListingClient';
 import { getExploreSiteAlternatives, exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
 import { resolveExploreListingByRootSlug } from '@/lib/actions/exploreAdmin';
+import { resolveExploreListingVisitRel } from '@/lib/actions/linkExchangePartners';
+import { getHomeFeaturedOfCreator } from '@/lib/explore/getHomeFeaturedOfCreator';
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
@@ -680,6 +682,7 @@ export default async function JoinPage({ params }: PageProps) {
 
   const exploreListing = await resolveExploreListingByRootSlug(slug);
   if (exploreListing) {
+    const visitRel = await resolveExploreListingVisitRel(exploreListing.slug);
     const alternatives = getExploreSiteAlternatives(exploreListing.slug, 8, exploreListing.categorySlug);
     const pageUrl = `${BASE_URL}${exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug)}`;
     const pageName = `${exploreListing.name} - Visit Porn Website`;
@@ -723,7 +726,7 @@ export default async function JoinPage({ params }: PageProps) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
-        <ExploreSiteListingClient listing={exploreListing} alternatives={alternatives} />
+        <ExploreSiteListingClient listing={exploreListing} alternatives={alternatives} visitRel={visitRel} />
       </>
     );
   }
@@ -802,12 +805,13 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages, joinFeaturedOfCreator] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getRankingCoverImages(),
+      getHomeFeaturedOfCreator(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
@@ -834,7 +838,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} rankingCoverImages={rankingCoverImages} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} rankingCoverImages={rankingCoverImages} joinFeaturedOfCreator={joinFeaturedOfCreator} />
       </>
     );
   }
