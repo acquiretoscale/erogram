@@ -31,6 +31,8 @@ interface ToolCardProps {
   primaryImageAlt?: string;
   verified?: boolean;
   light?: boolean;
+  /** Featured-on-Erogram hub row: green-tinted card so the spotlight reads apart from the grid. */
+  spotlight?: boolean;
 }
 
 const CATEGORY_BADGE: Record<string, string> = {
@@ -155,7 +157,7 @@ function ToolCardPreviewVideo({
   );
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false }: ToolCardProps) {
   const { t } = useTranslation();
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const galleryImageAlt = (idx: number) => pickTagHashtagAlt(tool.tags, idx);
@@ -369,23 +371,29 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     </div>
   ) : null;
 
-  const cardShell = light
+  const cardShell = spotlight
+    ? 'relative bg-[#ecfdf3] rounded-xl overflow-hidden h-full flex flex-col border-2 border-[#22c55e]/70 hover:border-[#16a34a] shadow-[0_10px_28px_-14px_rgba(34,197,94,0.7)] transition-all duration-150 group'
+    : light
     ? 'relative bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-[#22c55e]/50 shadow-sm transition-all duration-150 group'
     : 'relative bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group';
-  const imageShell = light ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-gray-100 shrink-0' : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0';
-  const titleCls = light
-    ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0'
+  const imageShell = spotlight
+    ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#d1fae5] shrink-0'
+    : light
+    ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-gray-100 shrink-0'
+    : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0';
+  const titleCls = spotlight || light
+    ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#15803d] transition-colors flex items-center gap-1 min-w-0'
     : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0';
-  const descCls = light
+  const descCls = spotlight || light
     ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'
     : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2';
-  const reviewCountCls = light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
-  const dividerCls = light
-    ? 'flex items-center justify-between gap-2 pt-1.5 border-t border-black/10 mb-2'
+  const reviewCountCls = spotlight || light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
+  const dividerCls = spotlight || light
+    ? 'flex items-center justify-between gap-2 pt-1.5 border-t border-[#22c55e]/20 mb-2'
     : 'flex items-center justify-between gap-2 pt-1.5 border-t border-white/10 mb-2';
-  const voteIdleCls = light ? 'bg-gray-100 text-gray-500' : 'bg-white/10 text-white/50';
-  const scoreNeutralCls = light ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-white/30';
-  const starEmptyCls = light ? 'text-gray-200' : 'text-white/20';
+  const voteIdleCls = spotlight || light ? 'bg-[#d1fae5] text-gray-600' : 'bg-white/10 text-white/50';
+  const scoreNeutralCls = spotlight || light ? 'bg-[#d1fae5] text-gray-500' : 'bg-white/5 text-white/30';
+  const starEmptyCls = spotlight || light ? 'text-gray-300' : 'text-white/20';
 
   const inlineReviews = reviews.length > 0 ? (
     <div className="flex items-center gap-1 shrink-0 ml-auto pl-2">

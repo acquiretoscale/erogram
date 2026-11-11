@@ -34,6 +34,8 @@ type Props = {
   embedded?: boolean;
   whiteBg?: boolean;
   compact?: boolean;
+  /** Promo media kit: larger logo tiles on mobile */
+  promoLargeLogos?: boolean;
 };
 
 export default function TrustedByLeaders({
@@ -45,6 +47,7 @@ export default function TrustedByLeaders({
   embedded = false,
   whiteBg = false,
   compact = false,
+  promoLargeLogos = false,
 }: Props) {
   const isGreen = variant === 'green';
   const isOnlyfans = variant === 'onlyfans';
@@ -56,7 +59,11 @@ export default function TrustedByLeaders({
         className={
           embedded
             ? `border-t ${whiteBg ? 'border-black/10' : isOnlyfans ? 'border-[#00AFF0]/15' : 'border-white/[0.06]'} ${
-                compact ? 'px-3 py-2 sm:px-4 sm:py-2.5' : 'px-4 py-4 sm:px-5 sm:py-5'
+                promoLargeLogos
+                  ? 'px-4 py-4 sm:px-5 sm:py-5'
+                  : compact
+                    ? 'px-3 py-2 sm:px-4 sm:py-2.5'
+                    : 'px-4 py-4 sm:px-5 sm:py-5'
               }`
             : isGreen
             ? 'rounded-lg border-[3px] border-black px-6 py-5 sm:px-10 sm:py-7'
@@ -87,7 +94,9 @@ export default function TrustedByLeaders({
 
         <div
           className={
-            manySponsors && (isGreen || isOnlyfans)
+            promoLargeLogos && manySponsors
+              ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3 w-full items-stretch'
+              : manySponsors && (isGreen || isOnlyfans)
               ? 'grid grid-cols-6 gap-1.5 sm:gap-2 w-full items-center'
               : manySponsors
                 ? 'flex flex-row flex-wrap items-center justify-center w-full gap-2 sm:gap-2.5 md:gap-3'
@@ -95,17 +104,21 @@ export default function TrustedByLeaders({
           }
         >
           {sponsors.map((sponsor) => {
-            const useWhiteTile = (isGreen || isOnlyfans) && manySponsors;
+            const useWhiteTile = promoLargeLogos || ((isGreen || isOnlyfans) && manySponsors);
             const tileClass = useWhiteTile
               ? whiteBg
-                ? compact
-                  ? 'rounded-md bg-neutral-50 border border-black/[0.08] h-8 sm:h-9 w-full flex items-center justify-center p-1 sm:p-1.5'
-                  : 'rounded-md bg-neutral-50 border border-black/[0.08] h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2'
+                ? promoLargeLogos
+                  ? 'rounded-lg bg-neutral-50 border border-black/[0.08] h-14 sm:h-16 w-full flex items-center justify-center p-2 sm:p-2.5'
+                  : compact
+                    ? 'rounded-md bg-neutral-50 border border-black/[0.08] h-8 sm:h-9 w-full flex items-center justify-center p-1 sm:p-1.5'
+                    : 'rounded-md bg-neutral-50 border border-black/[0.08] h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2'
                 : 'rounded-md bg-white h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2 shadow-[0_1px_6px_-1px_rgba(0,0,0,0.22)]'
               : '';
 
             const uniformTileImage = `max-h-full max-w-full object-contain object-center${sponsor.colored ? '' : ' brightness-0'}`;
-            const imageClass = useWhiteTile
+            const imageClass = promoLargeLogos && useWhiteTile
+              ? `max-h-9 sm:max-h-10 w-full max-w-[120px] sm:max-w-[140px] object-contain object-center${sponsor.colored ? '' : ' brightness-0'}`
+              : useWhiteTile
               ? uniformTileImage
               : isOnlyfans
               ? manySponsors

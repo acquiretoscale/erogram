@@ -32,7 +32,7 @@ async function seedDatabase() {
       // Create a basic admin user for seeding
       adminUser = await User.create({
         username: 'admin',
-        email: 'admin@erogram.pro',
+        email: 'admin@erogram.biz',
         isAdmin: true,
       });
       console.log('✅ Created admin user');

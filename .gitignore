@@ -18,6 +18,9 @@ node_modules/
 .next-*/
 /out/
 
+# TG Manager lives outside this repo (Desktop/tg-manager)
+/tg-manager/
+
 # production
 /build
 

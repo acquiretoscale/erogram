@@ -52,14 +52,14 @@ export default function HomeBlogCard({
         </div>
 
         <div className="flex flex-1 flex-col px-5 pb-4 pt-5">
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-[#c0392f]">
+          <p className="mb-3 text-[12px] sm:text-[11px] font-bold uppercase tracking-[0.3em] text-[#c0392f]">
             {eyebrow}
           </p>
           <h3 className="mb-3 line-clamp-2 font-sans text-[1.05rem] font-bold leading-[1.3] tracking-tight text-[#0f0c0a]">
             {article.title}
           </h3>
           {article.excerpt ? (
-            <p className="line-clamp-3 flex-1 text-[13px] leading-[1.65] text-[#6a6258]">
+            <p className="line-clamp-3 flex-1 text-[12px] sm:text-[11px] leading-[1.65] text-[#6a6258]">
               {article.excerpt}
             </p>
           ) : null}
@@ -79,11 +79,11 @@ export default function HomeBlogCard({
                 referrerPolicy="no-referrer"
               />
             ) : null}
-            <span className="truncate text-[10px] uppercase tracking-[0.2em] text-white/85">
+            <span className="truncate text-[12px] sm:text-[11px] uppercase tracking-[0.2em] text-white/85">
               {article.authorName}
             </span>
           </span>
-          <span className="shrink-0 text-[10px] uppercase tracking-[0.2em] text-white/45 tabular-nums">
+          <span className="shrink-0 text-[12px] sm:text-[11px] uppercase tracking-[0.2em] text-white/45 tabular-nums">
             {article.readMinutes} min
             {article.publishedAt ? ` · ${formatDate(article.publishedAt, locale)}` : ''}
           </span>

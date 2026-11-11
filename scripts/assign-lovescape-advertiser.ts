@@ -30,7 +30,7 @@ async function run() {
   if (!lovescape) {
     const created = await (Advertiser as any).create({
       name: 'Lovescape',
-      email: 'lovescape@erogram.pro',
+      email: 'lovescape@erogram.biz',
       company: 'Lovescape',
       status: 'active',
     });

@@ -8,7 +8,6 @@ import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
 import ErogramDevilGirlFooter from '@/components/ErogramDevilGirlFooter';
 import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
-import { ZoomableImage } from './PromoAudienceProof';
 import PartnershipStats from '../partnership/PartnershipStats';
 import TrustedByLeaders from '../advertise/TrustedByLeaders';
 import InFeedAdFormatComparison from '../add/ainsfw/InFeedAdFormatComparison';
@@ -168,7 +167,13 @@ function CheckMark() {
 }
 
 const MOVED_A_LA_CARTE_ADDONS: { title: string; price: string; description?: string }[] = [
-  { title: 'Basic listing (AINSFW / ADULT WEBSITE)', price: '$97 (One time payment)' },
+  { title: 'Basic Listing', price: '$97', description: 'Lifetime / permanent.' },
+  {
+    title: 'Boosted Listing',
+    price: '$197',
+    description:
+      '1 permanent listing + 1 month featured on your website section (AINSFW or PORN WEBSITE among top 4 results).',
+  },
   { title: 'LONG Form Editorial Article', price: '$290', description: 'SEO and conversion-optimized editorial article (2,000–3,000 words).' },
   { title: 'Short Form Article / Review', price: '$190', description: 'SEO and conversion-optimized editorial article (1,000 words).' },
   { title: 'Banner Ad (AINSFW, Groups, or Bots)', price: '$190/M' },
@@ -258,7 +263,7 @@ export default function MediaKitClient({
               boxShadow: PROMO_SHADOW,
             }}
           >
-            <AdvertiseStats onLiveAudience={setLiveAudience} />
+            <AdvertiseStats onLiveAudience={setLiveAudience} promoStacked />
             <PartnershipStats
               aiNsfwCount={aiNsfwCount}
               groupsAndBotsCount={groupsAndBotsCount}
@@ -269,7 +274,7 @@ export default function MediaKitClient({
               hideUsers
               embedded
               whiteStats
-              compact
+              monthlyVisitsText="140K+"
               liveAudience={liveAudience}
               geo={{
                 text: 'TOP GEOS:',
@@ -290,8 +295,8 @@ export default function MediaKitClient({
               variant="green"
               embedded
               whiteBg
-              compact
-              titleClassName="text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-[#064e3b] mb-2"
+              promoLargeLogos
+              titleClassName="text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-[#064e3b] mb-3 sm:mb-4"
             />
           </div>
         </div>
@@ -307,18 +312,6 @@ export default function MediaKitClient({
 
         {/* ── MOVED FROM /add/ainsfw — organize later ── */}
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pb-10">
-          <div className="w-full flex justify-center mt-6 sm:mt-8 mb-8">
-            <div
-              className="w-full max-w-[1024px] overflow-hidden bg-gray-50 rounded-lg"
-              style={{ border: `2px solid ${ACCENT}` }}
-            >
-              <ZoomableImage
-                src="/assets/promo/erogram-analytics-audience.png"
-                alt=""
-              />
-            </div>
-          </div>
-
           <div className="mt-8 mb-5">
             <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
               <Image
@@ -332,25 +325,10 @@ export default function MediaKitClient({
                 GET LISTED ON THE FASTEST GROWING ADULT ENTRETAINEMENT DISCOVERY HUB.
               </h2>
             </div>
-            <p className="text-base sm:text-lg text-white/75 leading-relaxed text-center mb-4 max-w-3xl mx-auto">
-              Get featured on one of the fastest-growing AI discovery platforms with 40% month-over-month organic growth.
-            </p>
-            <div className="overflow-hidden bg-white" style={{ border: BORDER, boxShadow: SHADOW }}>
-              <div className="p-4 sm:p-5 md:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="overflow-hidden bg-gray-50" style={{ border: `2px solid ${ACCENT}` }}>
-                    <ZoomableImage src="/assets/promo/erogram1.png" alt="Google Search Console showing Erogram organic traffic growth" />
-                  </div>
-                  <div className="overflow-hidden bg-gray-50" style={{ border: `2px solid ${ACCENT}` }}>
-                    <ZoomableImage src="/assets/promo/erogramx-gsc-growth.png" alt="" />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* PRICING GRID */}
-          <div className="mb-5 scroll-mt-24 mt-10">
+          <div className="mb-5 scroll-mt-24 mt-6 sm:mt-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-white text-center mb-6">
               OUR DIFFERENT OFFERS
             </h2>
@@ -375,6 +353,15 @@ export default function MediaKitClient({
                       </li>
                     ))}
                   </ul>
+                  <div className="px-4 py-3 sm:px-5 border-t border-black/10 bg-[#fafafa]">
+                    <Link
+                      href="/add/ainsfw"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-black uppercase tracking-wide text-black transition-transform hover:-translate-y-0.5"
+                      style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
+                    >
+                      Submit AINSFW
+                    </Link>
+                  </div>
                 </div>
               </section>
 
@@ -400,7 +387,7 @@ export default function MediaKitClient({
                         <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-tight min-w-0">
                           20.000 Clicks / Month
                         </p>
-                        <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$1500</p>
+                        <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$1800</p>
                       </div>
                       <div
                         className="bg-white rounded-md px-3 py-2.5 sm:px-4"

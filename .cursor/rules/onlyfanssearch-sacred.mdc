@@ -1,95 +1,27 @@
 ---
-description: "MARBLE SACRED: OnlyFans Search rules carved in stone. NEVER change without EXPLICIT owner order. Read EVERY TIME before touching app/onlyfanssearch/."
-alwaysApply: true
-globs:
-  - "app/onlyfanssearch/**"
-  - "app/onlyfans/**"
-  - "app/[slug]/**"
-  - "lib/actions/ofCreator*"
-  - "lib/actions/ofm*"
-  - "lib/actions/onlyfansTracking*"
-  - "lib/actions/publicData*"
+description: SACRED — OnlyFans Search marble rules. Applies when editing OF search files.
+globs: app/onlyfanssearch/**,app/onlyfans/**,app/[slug]/**,lib/actions/ofCreator*,lib/actions/ofm*,lib/actions/onlyfansTracking*,lib/actions/publicData*
+alwaysApply: false
 ---
 
-# MARBLE SACRED — ONLYFANSSEARCH RULES
+# OnlyFans Search — sacred
 
-## These rules have been broken 20+ times. Each time cost hours of work and Cursor credits. NEVER AGAIN.
+Read before editing matched files. Broken 20+ times before — each cost hours.
 
-## BEFORE YOU TOUCH ANY ONLYFANSSEARCH FILE
+## Checklist
 
-STOP. Read this checklist:
+- Owner explicitly asked for this change?
+- Links stay on Erogram (not OnlyFans.com)?
+- Creator links open **new tab** — never navigate away from search?
+- Hidden categories stay off main pills?
 
-- [ ] Did the owner EXPLICITLY ask for this change?
-- [ ] Does this change violate ANY rule below?
-- [ ] Will this change cause a link to go to OnlyFans instead of Erogram?
-- [ ] Will this change navigate away from the search page instead of opening a new tab?
-- [ ] Will this change show hidden categories on the main page?
+## Rules
 
-If ANY answer is wrong → **DO NOT MAKE THE CHANGE. Ask the owner first.**
+1. **New tab** — `window.open` or `target="_blank"`. Never `window.location` from search.
+2. **Profile URLs** — `ofCreatorProfileUrl()` → `/onlyfanssearch/{username}`. Banned: `/{username}-onlyfans`, `/onlyfans/{username}`.
+3. **Category pills** — only first 12 of `OF_CATEGORIES`. Hidden 16 never on main page. Never reorder constants.
+4. **Trending** — rank + name + username only. No points.
+5. **Sacred files** — `constants.ts`, `ofMeta.ts`, `sitemap.ts`, `creatorBios.ts`: explicit order only.
+6. **No new API routes** — use server actions in `lib/actions/`.
 
----
-
-## RULE 1: ALL creator links open in a NEW TAB
-
-Every single creator link on `/onlyfanssearch` MUST open in a new tab/window. NO EXCEPTIONS.
-
-- Use `window.open(url, '_blank', 'noopener,noreferrer')` for JS click handlers
-- Use `target="_blank" rel="noopener noreferrer"` for `<a>` tags
-- Registration/login redirects ALSO open in new tab — NEVER use `window.location.href`
-- This applies to: CreatorCard, Top10CategoryCard, Trending on Erogram, Featured creators, Recently Added
-- NEVER navigate away from the search page. The user must stay on `/onlyfanssearch`.
-
-## RULE 2: Creator links use `/onlyfanssearch/{username}` — NEVER `/{username}-onlyfans` or `/onlyfans/{username}`
-
-All creator profile links use `ofCreatorProfileUrl()` from `lib/onlyfanssearch/creatorUrls.ts` → `/onlyfanssearch/{username}`.
-
-- **Source of truth:** `ofCreatorProfileUrl(username)` — never hand-build profile URLs
-- **BANNED:** `/{username}-onlyfans` (legacy dead pattern — agents gave wrong links from old rules)
-- **BANNED:** `/onlyfans/{username}` — redirects non-logged-in users to OnlyFans
-- NEVER link directly to OnlyFans URLs (creator.url) from the search page
-- Non-logged-in users go to `/join-erogram?redirect=/onlyfanssearch/{username}` (in new tab)
-- Logged-in users go to `/onlyfanssearch/{username}` (in new tab)
-- The ONLY place a user leaves Erogram is from the creator's own profile page CTA button
-
-## RULE 3: These 16 categories are HIDDEN on the main page pills
-
-HIDDEN (never show on `/onlyfanssearch` category pills):
-Ahegao, Alt, Cosplay, Streamer, Fitness, JOI, Lesbian, Tattoo, Curvy, Ebony, Feet, Lingerie, Thick, Twerk, Squirt, Piercing
-
-SHOWN (only these 12):
-Asian, Blonde, Teen, MILF, Amateur, Redhead, Goth, Petite, Big Ass, Big Boobs, Brunette, Latina
-
-Implementation: `OF_CATEGORIES.slice(0, 12)` in the category pills section of OnlyFansClient.tsx.
-The hidden categories still exist in constants.ts and still have their own pages — they are ONLY hidden from the main page pills.
-
-- NEVER add them back to the main page
-- NEVER change the slice
-- NEVER reorder OF_CATEGORIES in constants.ts
-
-## RULE 4: Trending section shows rank + name + username — NO points
-
-The "Trending on Erogram" section shows:
-- Rank number badge
-- Avatar
-- Creator name
-- @username
-
-It does NOT show points, pts, pointsDelta, or any numeric score. NEVER add points back.
-
-## RULE 5: DO NOT touch these files without explicit owner permission
-
-- `app/onlyfanssearch/constants.ts` — category/country lists, URL helpers
-- `app/onlyfanssearch/ofMeta.ts` — SEO metadata for all locale variants
-- `app/onlyfanssearch/sitemap.ts` — sitemap generation
-- `app/onlyfanssearch/creatorBios.ts` — hand-written creator bios
-
-## RULE 6: NEVER create API routes for onlyfanssearch features
-
-All data fetching uses server actions in `lib/actions/`. See the no-unnecessary-api rule.
-
-## IF YOU THINK ANY RULE SHOULD CHANGE
-
-**STOP. Ask the owner with this exact format:**
-"I want to change [RULE NUMBER] because [REASON]. Current behavior: [X]. Proposed: [Y]. Do you approve?"
-
-**Default answer is ALWAYS: NO. Leave it alone.**
+Propose changes in chat first. Default: **leave alone**.

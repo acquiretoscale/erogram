@@ -8,7 +8,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 
 await mongoose.connect(process.env.MONGODB_URI, { family: 4 });
 
-const TRACKING_URL = 'https://erogram.pro/go/joi-ai';
+const TRACKING_URL = 'https://erogramx.com/go/joi-ai';
 const TOOL_URL = '/ainsfw/joi-ai-nude-generator';
 const ALLURE_URL = '/ainsfw/aiallure-ai-chat';
 const VIDEO_URL = 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/articles/joi-ai-promo-v112.mp4';

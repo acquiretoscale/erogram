@@ -27,7 +27,7 @@ const SKIP_DOMAINS = new Set([
   'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'youtube.com', 'linkedin.com',
   'apple.com', 'microsoft.com', 'cloudflare.com', 'duckduckgo.com', 'w3.org', 'gstatic.com',
   'fonts.googleapis.com', 'ccbill.com', 'go.aimojo.club', 'nsfwtools.vip', 'aipornwiki.com',
-  'aihaven.com', 'aiapps.com', 'nsfw.tools', 'nsfw-tools.com', 'bestainsfw.com', 'erogram.pro',
+  'aihaven.com', 'aiapps.com', 'nsfw.tools', 'nsfw-tools.com', 'bestainsfw.com', 'erogramx.com',
 ]);
 
 function log(msg) {

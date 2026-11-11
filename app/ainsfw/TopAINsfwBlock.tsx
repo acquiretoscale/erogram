@@ -124,10 +124,10 @@ export default function TopAINsfwBlock({
       : 'grid grid-cols-2 gap-2 max-w-xl mx-auto w-full';
 
   return (
-    <section className="mb-6">
-      <div className="relative bg-white rounded-xl border border-black/10 px-1.5 pb-1.5 pt-3">
-        <div className="absolute -top-2.5 left-2 right-2 flex items-center justify-between gap-2 pointer-events-none">
-          <h2 className="pointer-events-auto inline-flex items-center h-5 px-2 rounded-md bg-[#22c55e] text-black text-[10px] font-black uppercase tracking-wide leading-none shadow-[0_1px_0_rgba(0,0,0,0.08)]">
+    <section className="mb-8">
+      <div className="relative rounded-2xl border-2 border-[#22c55e]/80 bg-gradient-to-b from-[#166534] via-[#0c2e1a] to-[#07180f] px-2 pb-2 pt-5 shadow-[0_0_36px_-8px_rgba(34,197,94,0.65)]">
+        <div className="absolute -top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+          <h2 className="pointer-events-auto inline-flex items-center h-6 px-2.5 rounded-md bg-[#22c55e] text-black text-[11px] font-black uppercase tracking-wide leading-none shadow-[0_0_16px_rgba(34,197,94,0.55)]">
             {t('ainsfw.featuredOn', 'Featured on Erogram')}
           </h2>
           <div className="pointer-events-auto flex items-center gap-1">
@@ -168,6 +168,7 @@ export default function TopAINsfwBlock({
                 initialStats={allStats?.[tool.slug]}
                 onVoteChange={onVoteChange}
                 verified={verifiedSet.has(tool.slug)}
+                spotlight
               />
             ))}
           </div>

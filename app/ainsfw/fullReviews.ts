@@ -300,6 +300,66 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "JOI AI", slug: "joi-ai-nude-generator" },
     ],
   },
+  "xmode-ai-nsfw-image-generator": {
+    shortDescription:
+      "xMode is a polished AI NSFW image generator and AI nude generator for adults who want strong results without mainstream filters shutting the prompt down. On xmode.ai, you upload reference photos, build a reusable Face ID, and generate uncensored stills and short AI video clips from plain text prompts or ready-made prompt packs. Whether you are exploring NSFW AI for the first time or you already run a busy creative workflow, the tool is built to feel fast, clear, and worth bookmarking.",
+    featureHighlights: [
+      {
+        title: "xMode as an AI NSFW Image Generator and AI Nude Generator",
+        body: "xMode shines as an AI porn generator-class option in the honest sense: explicit AI image generation with control over scene, style, and composition. Generations aim to keep facial identity stable across sets, so outputs feel like the same person, not a random face on every click. That stability matters for nude AI stills, themed galleries, and anything you plan to post or sell. Still images are the core product, and one portrait can extend into a short image-to-video clip when you want motion for teasers or profile refreshes.",
+      },
+      {
+        title: "xMode as the Go-To AI Studio for OnlyFans Creators and Agencies",
+        body: "OnlyFans creators, Fansly and Fanvue talent, and OnlyFans agencies managing multiple models often land here because xMode matches how they actually work: repeatable sets, consistent identity per model, and volume without booking a full studio every week. Agencies can standardize looks across a roster, creators can refresh feeds on a schedule, and both keep commercial usage rights on generated content as described on xMode's site. Always check each platform's latest AI rules before posting. If that is your world, xMode is one of the most natural fits in the AI content creation space.",
+      },
+      {
+        title: "xMode as a Friendly Uncensored AI Tool for Every Adult Creator",
+        body: "You do not need to run a subscription platform to get value. Hobby creators, artists, and curious users get a capable uncensored AI studio in the browser at app.xmode.ai: prompt, generate, download. Crypto and card payments are available for flexibility. Power users and teams can use the xMode API and xTokens when they want automation. Features like X Secret Mode appeal to anyone who wants a styled or alternate look while keeping professional output quality.",
+      },
+      {
+        title: "xMode as a Top-Ranked AI Video Generator and NSFW AI Platform",
+        body: "xMode belongs in the AI NSFW image generator and AI video generator conversation with strong Face ID workflow, uncensored adult output within lawful policy, and a creator-first pitch. It is a good AI tool and an excellent nude generator on merit, while OnlyFans creators and agencies will recognize it immediately as a serious fit for daily content. Visit xmode.ai when you want uncensored AI images, reliable nude generation, and optional short AI video, from solo sessions up to agency-scale output.",
+      },
+    ],
+    sections: [],
+    alternatives: [
+      { name: "Genesis Porn", slug: "genesis-porn-ai-image" },
+      { name: "JOI AI", slug: "joi-ai-nude-generator" },
+      { name: "PornCreate", slug: "porncreate-undress-ai" },
+    ],
+  },
+  "ai-peep-ai-nsfw-chat": {
+    shortDescription:
+      "AI Peep (aipeeps.com) is one of the most approachable free NSFW AI chat destinations on the web: pick a Peep, start talking, and sign up only when you want saves, coins, and extras. The site bundles uncensored AI chat, in-thread images, video, and voice in one place, so it fits anyone comparing AI NSFW tools, AI girlfriend apps, and AI character platforms without jumping between tabs.",
+    featureHighlights: [
+      {
+        title: "AI Peep as a Free NSFW AI Chat You Can Try in Seconds",
+        body: "You can open a character and chat without an account, which is rare in this niche. After 18+ confirmation, the NSFW side unlocks alongside SFW browsing. A free login via Google, X, Apple, or email brings daily free messages, stored chats, PeepCoins, and pictures your Peep can send during conversation. If your search is AI sexting, AI roleplay, or a natural AI companion that keeps scene context, this front door is built for that intent.",
+      },
+      {
+        title: "AI Peep as an Uncensored AI Character and Roleplay Hub",
+        body: "The catalog is built around AI characters: personalities, scenes, galleries, and story hooks that read like mini profiles rather than generic bots. You can create your own Peep, lean on long-term memory, and grow arcs over time. AI Peep positions itself as uncensored for adults while banning minors and real-person abuse in policy. Styles span photorealistic, anime, cartoon, painted, and 3D, so traffic from AI NSFW character and AI girlfriend searches still finds relevant depth.",
+      },
+      {
+        title: "AI Peep as an AI NSFW Image Generator and Video Studio",
+        body: "Chat is the hook, but media is a full lane. PeepCoins power image creation and editing in the studio: outfit, pose, background, or quick Advanced Peep builds from a short brief. Site updates highlight mixing two looks in one image and community bounties with PeepCoin rewards. Still images can move toward AI video generation when you animate a photo into a short clip, which serves visitors who arrived looking for AI NSFW image generator or AI video tools, not only text.",
+      },
+      {
+        title: "AI Peep as an AI Companion with Voice, Memory, and Daily Use",
+        body: "Voice and immersive chat sit next to text, and the product FAQ stresses fair pricing and convincing quality on images and video. New Peeps refresh on a weekly rhythm, so the hub stays lively for return visits. Paid tiers expand unlimited text and monthly coin allowances for heavier image and video use, while the free tier stays honest for first tests.",
+      },
+      {
+        title: "AI Peep as a Leading AI NSFW Chat and AI Girlfriend Alternative",
+        body: "On Erogram, AI Peep belongs with the best AI NSFW chat, AI characters, uncensored AI chat, and AI roleplay listings, with a clear path for NSFW AI images and AI video when you are ready to spend coins. It is a good AI tool for adults who want personality first and a studio second, without paying before the first message. Visit aipeeps.com to try chat free, then grow into images, video, and voice at your own pace.",
+      },
+    ],
+    sections: [],
+    alternatives: [
+      { name: "GirlfriendGPT", slug: "girlfriendgpt-ai-girlfriend" },
+      { name: "Candy AI", slug: "candy-ai-ai-girlfriend" },
+      { name: "CrushOn AI", slug: "crushon-ai-ai-girlfriend" },
+    ],
+  },
 };
 
 export function getFullReview(slug: string): AINsfwFullReview | undefined {
@@ -327,6 +387,8 @@ export const AINSFW_PAID_CLIENTS = [
   { slug: 'lovescape-ai-girlfriend', goLive: '2026-05-01T00:00:00.000Z' },
   { slug: 'joi-ai-nude-generator', goLive: '2026-04-15T00:00:00.000Z' },
   { slug: 'girlfriendgpt-ai-girlfriend', goLive: '2026-04-01T00:00:00.000Z' },
+  { slug: 'xmode-ai-nsfw-image-generator', goLive: '2026-03-25T00:00:00.000Z' },
+  { slug: 'ai-peep-ai-nsfw-chat', goLive: '2026-03-25T00:00:00.000Z' },
 ] as const;
 
 export const AINSFW_PAID_CLIENT_SLUGS = AINSFW_PAID_CLIENTS.map((c) => c.slug);

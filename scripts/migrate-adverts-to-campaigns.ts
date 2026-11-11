@@ -44,7 +44,7 @@ async function migrate() {
   if (!advertiser) {
     const created = await Advertiser.create({
       name: 'Legacy Adverts',
-      email: 'legacy@erogram.pro',
+      email: 'legacy@erogram.biz',
       company: 'Migrated from Adverts',
       status: 'active',
     });

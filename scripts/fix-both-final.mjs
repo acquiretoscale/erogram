@@ -120,5 +120,5 @@ console.log('Article 2 — status:', check2.status, '| CTAs:', ctas2, '| has TOC
 
 await mongoose.disconnect();
 console.log('\nBoth live:');
-console.log('https://erogram.pro/articles/why-millions-are-switching-to-ai-companionship-lately');
-console.log('https://erogram.pro/articles/ai-girlfriend-chat-changing-relationships');
+console.log('https://erogramx.com/articles/why-millions-are-switching-to-ai-companionship-lately');
+console.log('https://erogramx.com/articles/ai-girlfriend-chat-changing-relationships');

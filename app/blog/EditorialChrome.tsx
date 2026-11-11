@@ -793,11 +793,11 @@ function FooterSocialBlock() {
       </p>
       <div className="relative flex items-center justify-center gap-3">
         <a
-          href="https://t.me/erogrampro"
+          href="https://t.me/erogramDOTpro"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Follow EROGRAMX on Telegram"
-          title="EROGRAMX"
+          aria-label="Follow EROGRAMX on Telegram (@erogramDOTpro)"
+          title="@erogramDOTpro"
           className={`${tileBase} flex-col gap-1 h-auto min-h-12 w-[4.25rem] py-2 bg-[#0d8ecf]/15 border-[#29a9eb]/35 shadow-[0_4px_14px_rgba(13,142,207,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[#29a9eb]/60 hover:bg-[#0d8ecf]/25 hover:shadow-[0_10px_28px_rgba(13,142,207,0.35),0_0_0_1px_rgba(41,169,235,0.15)]`}
         >
           <TelegramPlaneIcon className="h-[19px] w-[19px] text-[#29a9eb] transition-transform duration-300 group-hover:scale-110" />

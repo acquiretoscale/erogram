@@ -97,7 +97,7 @@ function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boole
     return (
       <span
         className={`shrink-0 rounded-md border border-gray-200 bg-gray-100 flex items-center justify-center font-black text-gray-500 ${
-          large ? 'w-8 h-8 text-[13px]' : 'w-6 h-6 text-[11px]'
+          large ? 'w-8 h-8 text-[12px] sm:text-[11px]' : 'w-6 h-6 text-[12px] sm:text-[11px]'
         }`}
         aria-hidden
       >
@@ -189,11 +189,11 @@ function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; category
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5 flex items-end justify-between gap-2">
         <div className="min-w-0 text-left">
-          <span className="block text-[10px] font-black tracking-[0.12em] uppercase text-white/70">#1</span>
+          <span className="block text-[12px] sm:text-[11px] font-black tracking-[0.12em] uppercase text-white/70">#1</span>
           <span className="block text-[15px] sm:text-base font-black leading-tight text-white truncate">{site.name}</span>
         </div>
         {pickLabel ? (
-          <span className="shrink-0 text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
+          <span className="shrink-0 text-[12px] sm:text-[11px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
             {pickLabel}
           </span>
         ) : null}
@@ -270,7 +270,7 @@ function CategoryCard({
             {category.title}
           </h2>
           {category.description ? (
-            <p className="mt-1.5 text-[12px] leading-snug text-white/55 font-medium">
+            <p className="mt-1.5 text-[12px] sm:text-[11px] leading-snug text-white/55 font-medium">
               {category.description}
             </p>
           ) : null}
@@ -308,7 +308,7 @@ function CategoryCard({
                       {site.name}
                     </span>
                     {pickLabel ? (
-                      <span className="shrink-0 ml-auto text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
+                      <span className="shrink-0 ml-auto text-[12px] sm:text-[11px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
                         {pickLabel}
                       </span>
                     ) : null}
@@ -355,7 +355,7 @@ function CategoryCard({
 
       <Link
         href={lp(`/${category.slug}`)}
-        className="block w-full py-2.5 px-3 text-[11px] font-black tracking-[0.14em] uppercase text-white text-center border-t border-[#c0392f]/20 hover:opacity-90"
+        className="block w-full py-2.5 px-3 text-[12px] sm:text-[11px] font-black tracking-[0.14em] uppercase text-white text-center border-t border-[#c0392f]/20 hover:opacity-90"
         style={{ background: ACCENT }}
       >
         {total > 0 ? `SEE ALL ${total} SITES →` : 'SEE THE WHOLE LIST →'}
@@ -442,7 +442,7 @@ export default function HomeExploreClient({
             <h1 className="home-hero-title text-[15px] sm:text-[22px] md:text-[27px] mb-4 sm:mb-5">
               <span className="home-hero-title-mark">Your #1 ADULT entretainement platform</span>
             </h1>
-            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[14px] sm:text-[15px] md:text-base text-white leading-relaxed font-medium">
+            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[12px] sm:text-[11px] text-white leading-relaxed font-medium">
               <span className="home-hero-sub-mark">
               Your #1 Porn Telegram, Porn websites &amp; AI NSFW Hub The best{' '}
               <Link href={lp('/groups')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
@@ -592,7 +592,7 @@ export default function HomeExploreClient({
                   <div className="text-lg font-bold text-[#0a0a0b] group-hover:text-[#c0392f] transition-colors">
                     {t('home.bestGroups', 'Best {category} Groups').replace('{category}', cat.name)}
                   </div>
-                  <div className="text-xs text-[#6b7280] mt-1">
+                  <div className="text-[12px] sm:text-[11px] text-[#6b7280] mt-1">
                     {t('home.topCollections', 'Top 10 Collections')}
                   </div>
                 </Link>

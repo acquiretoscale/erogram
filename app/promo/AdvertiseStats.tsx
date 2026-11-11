@@ -120,8 +120,11 @@ function AdClicksRow({ value, ready }: { value: number; ready: boolean }) {
 
 export default function AdvertiseStats({
   onLiveAudience,
+  promoStacked = false,
 }: {
   onLiveAudience?: (d: { pageViews: number; activeVisitors: number }) => void;
+  /** Promo media kit: audience numbers live in PartnershipStats stacked list only */
+  promoStacked?: boolean;
 }) {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,8 +200,8 @@ export default function AdvertiseStats({
         )}
       </AnimatePresence>
 
-      <div ref={statsRef}>
-        <AdClicksRow value={data.last30dClientClicks} ready={!loading} />
+      <div ref={statsRef} className={promoStacked ? 'sr-only' : undefined} aria-hidden={promoStacked}>
+        {!promoStacked && <AdClicksRow value={data.last30dClientClicks} ready={!loading} />}
       </div>
     </>
   );

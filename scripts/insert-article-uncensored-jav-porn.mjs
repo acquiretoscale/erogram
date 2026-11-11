@@ -148,4 +148,4 @@ console.log('Created. ID:', article._id.toString());
 console.log('Slug:', SLUG);
 
 await mongoose.disconnect();
-console.log('\nLive at: https://erogram.pro/blog/' + SLUG);
+console.log('\nLive at: https://erogramx.com/blog/' + SLUG);

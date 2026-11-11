@@ -29,7 +29,7 @@ const SKIP_DOMAINS = new Set([
   'apple.com', 'microsoft.com', 'cloudflare.com', 'duckduckgo.com', 'w3.org', 'schema.org',
   'gstatic.com', 'fonts.googleapis.com', 'ccbill.com', 'go.aimojo.club', 'nsfwtools.vip',
   'aipornwiki.com', 'aihaven.com', 'aiapps.com', 'nsfw.tools', 'nsfw-tools.com',
-  'bestainsfw.com', 'bestnsfwai.io', 'ainsfwtools.com', 'companaya.com', 'erogram.pro',
+  'bestainsfw.com', 'bestnsfwai.io', 'ainsfwtools.com', 'companaya.com', 'erogramx.com',
 ]);
 
 const SOCIAL_RE = /^(twitter|facebook|linkedin|instagram|youtube|t\.me|telegram|discord|reddit)\./i;

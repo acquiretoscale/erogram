@@ -13,7 +13,7 @@ dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 const cliUri = process.argv[2];
 if (cliUri) process.env.MONGODB_URI = cliUri;
 
-const NEW_URL = 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogram.pro&aff_sub=feed';
+const NEW_URL = 'https://go.cm-trk6.com/aff_c?offer_id=11167&aff_id=93961&url_id=19191&source=erogramx.com&aff_sub=feed';
 
 /** Match CPAmatica tracking links: go.cm-trk3.com, go.cm-trk6.com, etc. (aff_f, aff_c, any params) */
 function isCpamaticaLink(url: string | null | undefined): boolean {
@@ -38,7 +38,7 @@ async function run() {
   if (!cpamatica) {
     const created = await (Advertiser as any).create({
       name: 'CPAMATICA',
-      email: 'cpamatica@erogram.pro',
+      email: 'cpamatica@erogram.biz',
       company: 'CPAmatica',
       status: 'active',
     });

@@ -14,7 +14,7 @@ async function setAdminPassword() {
     const args = process.argv.slice(2);
     if (args.length < 3) {
       console.log('Usage: npx tsx scripts/set-admin-password.ts <username|email> <password> <setIsAdmin>');
-      console.log('Example: npx tsx scripts/set-admin-password.ts admin@erogram.pro mypassword true');
+      console.log('Example: npx tsx scripts/set-admin-password.ts admin@erogram.biz mypassword true');
       console.log('');
       console.log('Or if .env.local exists:');
       console.log('MONGODB_URI="mongodb://..." npx tsx scripts/set-admin-password.ts admin mypassword true');

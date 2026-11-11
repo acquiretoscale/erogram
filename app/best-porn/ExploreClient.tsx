@@ -264,6 +264,54 @@ function seeAllHrefFor(slug: string): string | undefined {
   return `/${ROOT_SEE_ALL_SLUG[slug] || slug}`;
 }
 
+function FeaturedLeaderPreview({ site, categorySlug }: { site: ExploreSite; categorySlug: string }) {
+  const href = outboundHref(site);
+  const newTab = opensOutboundInNewTab(site);
+  const pickLabel = pickLabelForFirstPick(categorySlug);
+  const image = site.image;
+  if (!image) return null;
+
+  const inner = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={image}
+        alt={site.name}
+        loading="lazy"
+        className="absolute left-1/2 top-1.5 h-10 w-auto max-w-[50%] -translate-x-1/2 object-contain"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 px-2.5 py-1 flex items-end justify-between gap-2">
+        <div className="min-w-0 text-left">
+          <span className="block text-[9px] font-black tracking-[0.12em] uppercase text-white/70 leading-none">#1</span>
+          <span className="block text-[13px] font-black leading-tight text-white truncate">{site.name}</span>
+        </div>
+        {pickLabel ? (
+          <span className="shrink-0 text-[8px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
+            {pickLabel}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+  const className =
+    'group relative block w-full h-[72px] overflow-hidden border-b border-[#c0392f]/20 bg-[#120606]';
+
+  if (newTab) {
+    return (
+      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <a href={href} className={className}>
+      {inner}
+    </a>
+  );
+}
+
 function CategoryCard({
   category,
   categoryIndex,
@@ -389,10 +437,14 @@ function CategoryCard({
     }
   }
 
+  const leader = sites.find((site) => site.featured && site.image);
+
   return (
     <section
       id={category.slug}
-      className="mb-4 rounded-2xl border border-[#c0392f]/20 bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]"
+      className={`mb-4 rounded-2xl border bg-white overflow-hidden shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] ${
+        leader ? 'border-[#c0392f]/45 ring-1 ring-[#c0392f]/25' : 'border-[#c0392f]/20'
+      }`}
     >
       <div className="px-4 py-3 border-b border-[#c0392f]/20 bg-[#1a0808] flex items-start gap-3 shadow-[inset_0_1px_0_rgba(255,138,138,0.1)]">
         <CategoryMascot categoryIndex={categoryIndex} />
@@ -429,6 +481,8 @@ function CategoryCard({
           </div>
         ) : null}
       </div>
+
+      {leader ? <FeaturedLeaderPreview site={leader} categorySlug={category.slug} /> : null}
 
       {isAdmin && showAddForm ? (
         <form onSubmit={(e) => void handleAddSite(e)} className="px-3 py-3 border-b border-[#c0392f]/15 bg-red-50/50 space-y-2">

@@ -70,13 +70,13 @@ Then trigger a **redeploy** (Deployments → ⋮ → Redeploy) so the new env va
 
 ## 5. Custom domain (Namecheap → Vercel)
 
-1. In **Vercel**: Project → **Settings** → **Domains** → add your domain (e.g. `erogram.pro` or `www.erogram.pro`).
+1. In **Vercel**: Project → **Settings** → **Domains** → add your domain (e.g. `erogramx.com` or `www.erogramx.com`).
 2. Vercel will show you what to set at your registrar (e.g. **CNAME** or **A** record).
 3. In **Namecheap**: **Domain List** → **Manage** for your domain → **Advanced DNS**.
-   - For **root** (`erogram.pro`): add an **A Record** with Vercel’s IP (e.g. `76.76.21.21`) or use their **ALIAS**/flattening if Namecheap supports it.
-   - For **www** (`www.erogram.pro`): add a **CNAME** record: `www` → `cname.vercel-dns.com` (or the host Vercel gives you).
+   - For **root** (`erogramx.com`): add an **A Record** with Vercel’s IP (e.g. `76.76.21.21`) or use their **ALIAS**/flattening if Namecheap supports it.
+   - For **www** (`www.erogramx.com`): add a **CNAME** record: `www` → `cname.vercel-dns.com` (or the host Vercel gives you).
 4. Save. SSL is automatic on Vercel; propagation can take up to 48 hours (often minutes).
-5. Set `NEXT_PUBLIC_SITE_URL` to your final URL (e.g. `https://erogram.pro`) and redeploy if you didn’t already.
+5. Set `NEXT_PUBLIC_SITE_URL` to your final URL (e.g. `https://erogramx.com`) and redeploy if you didn’t already.
 
 ---
 

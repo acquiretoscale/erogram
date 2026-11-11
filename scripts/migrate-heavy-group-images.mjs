@@ -78,7 +78,7 @@ async function compress(buffer) {
 
 async function fetchImage(url) {
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'ErogramMigrate/1.0', Referer: 'https://erogram.pro/' },
+    headers: { 'User-Agent': 'ErogramMigrate/1.0', Referer: 'https://erogramx.com/' },
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

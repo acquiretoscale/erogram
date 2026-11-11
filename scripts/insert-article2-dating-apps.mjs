@@ -190,6 +190,6 @@ console.log('Slug:', SLUG);
 console.log('Status: published');
 console.log('CTAs:', (content.match(/\`\`\`cta/g) || []).length);
 console.log('Has TOC:', content.includes("## What's Inside"));
-console.log('\nLive at: https://erogram.pro/articles/' + SLUG);
+console.log('\nLive at: https://erogramx.com/articles/' + SLUG);
 
 await mongoose.disconnect();

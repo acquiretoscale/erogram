@@ -44,7 +44,7 @@ Vercel does **not** read your .env.local. The only way the live site uses the sa
 
 After deploying, open in the browser:
 
-**`https://erogram.pro/api/debug/articles-count`**
+**`https://erogramx.com/api/debug/articles-count`**
 
 You should see JSON like:
 
@@ -109,4 +109,4 @@ That message means the **live** app is trying to connect to the **old VPS** IP. 
 1. **`MONGODB_URI` on Vercel is still the VPS URI** for the deployment that serves the admin (or for Production). Fix: set `MONGODB_URI` to your **Atlas** URI (same as .env.local) for **Production** (and Preview if you use it). Save, then redeploy.
 2. **An old deployment is still in use.** Fix: **Deployments** → open the **⋮** menu on the latest deployment → **Redeploy** → enable **Clear cache and redeploy**, then confirm. Ensure the **production domain** is assigned to this new deployment.
 
-After redeploying, open **`https://erogram.pro/api/debug/articles-count`** and check **`uriHost`**. It should be your Atlas host (e.g. `cluster0.dlph1wf.mongodb.net`), not `89.192.46.214`. Then the admin Articles tab and the public articles page will use Atlas and show the 25 articles.
+After redeploying, open **`https://erogramx.com/api/debug/articles-count`** and check **`uriHost`**. It should be your Atlas host (e.g. `cluster0.dlph1wf.mongodb.net`), not `89.192.46.214`. Then the admin Articles tab and the public articles page will use Atlas and show the 25 articles.

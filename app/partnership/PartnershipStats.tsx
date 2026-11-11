@@ -48,6 +48,7 @@ function buildStatDefs(
   listingsCount?: number,
   hideUsers?: boolean,
   liveAudience?: { pageViews: number; activeVisitors: number } | null,
+  monthlyVisitsText = '250 to 300K',
 ): StatDef[] {
   const listingStats: StatDef[] = combineListings
     ? [{
@@ -86,7 +87,7 @@ function buildStatDefs(
     : [];
   const stats: StatDef[] = [
     ...liveStats,
-    { id: 'visits', label: 'Monthly Visits', type: 'text', text: '250 to 300K' },
+    { id: 'visits', label: 'Monthly Visits', type: 'text', text: monthlyVisitsText },
     { id: 'tier1', label: geo?.label ?? TOP_GEO_FLAGS, type: 'text', text: geo?.text ?? 'TOP GEOS:' },
     ...(hideUsers
       ? []
@@ -148,7 +149,7 @@ function CountStatValue({
   const value = useCountUp(target, active);
   return (
     <span
-      className="font-black text-[1.05rem] sm:text-[1.15rem] leading-none tabular-nums shrink-0 min-w-[4.25rem] sm:min-w-[4.75rem]"
+      className="font-black text-[1.05rem] sm:text-[1.15rem] leading-none tabular-nums shrink-0"
       style={{ color: live ? accent : staticColor }}
     >
       {active ? format(value) : '—'}
@@ -172,7 +173,7 @@ function StatValue({
   if (stat.type === 'text') {
     return (
       <span
-        className={`font-black text-[1.05rem] sm:text-[1.15rem] leading-none shrink-0 whitespace-nowrap min-w-[4.25rem] sm:min-w-[4.75rem] transition-opacity duration-500 ${valueTextClass} ${active ? 'opacity-100' : 'opacity-0'}`}
+        className={`font-black leading-none shrink-0 whitespace-nowrap transition-opacity duration-500 ${valueTextClass} ${active ? 'opacity-100' : 'opacity-0'}`}
       >
         {stat.text}
       </span>
@@ -211,6 +212,8 @@ export default function PartnershipStats({
   liveAudience = null,
   whiteStats = false,
   compact = false,
+  monthlyVisitsText,
+  stackedRows = false,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
@@ -227,9 +230,12 @@ export default function PartnershipStats({
   liveAudience?: { pageViews: number; activeVisitors: number } | null;
   whiteStats?: boolean;
   compact?: boolean;
+  monthlyVisitsText?: string;
+  /** Promo media kit: two columns — name (left), details (right). */
+  stackedRows?: boolean;
 }) {
   const theme = THEMES[variant];
-  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings, whiteBg || whiteStats, listingsCount, hideUsers, liveAudience);
+  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings, whiteBg || whiteStats, listingsCount, hideUsers, liveAudience, monthlyVisitsText);
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -246,9 +252,13 @@ export default function PartnershipStats({
   const valueTextClass = lightStats ? 'text-black' : 'text-white';
   const labelClass = lightStats ? 'text-black/60' : 'text-white/65';
   const headerTextClass = whiteBg ? 'text-black' : 'text-white';
-  const cellBorderClass = lightStats
-    ? 'border-b border-black/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-black/[0.06]'
-    : 'border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]';
+  const cellBorderClass = stackedRows
+    ? lightStats
+      ? 'border-b border-black/[0.08]'
+      : 'border-b border-white/[0.06]'
+    : lightStats
+      ? 'border-b border-black/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-black/[0.06]'
+      : 'border-b border-white/[0.06] sm:[&:nth-child(odd)]:border-r sm:[&:nth-child(odd)]:border-white/[0.06]';
 
   return (
     <section
@@ -281,32 +291,96 @@ export default function PartnershipStats({
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2">
-        {stats.map((stat) => (
+      {stackedRows ? (
+        <div className="flex flex-col">
           <div
-            key={stat.id}
-            className={`flex items-center gap-2.5 ${cellBorderClass} ${
-              compact ? 'px-3 py-1 sm:px-4 sm:py-1.5' : 'px-3 py-2 sm:px-4'
+            className={`grid grid-cols-2 gap-4 border-b border-black/10 ${
+              compact ? 'px-4 py-2 sm:px-5' : 'px-4 py-2.5 sm:px-5'
             }`}
-            style={{
-              background: stat.live ? liveStatBg : statBg,
-            }}
+            style={{ background: statBg }}
           >
-            {active ? (
-              <StatValue
-                stat={stat}
-                active={active}
-                accent={theme.accent}
-                staticColor={staticColor}
-                valueTextClass={valueTextClass}
-              />
-            ) : (
-              <StatSkeleton whiteBg={whiteBg} />
-            )}
-            <p className={`text-[11px] sm:text-[12px] leading-snug min-w-0 ${stat.id === 'tier1' ? '' : labelClass}`}>{stat.label}</p>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45">Name</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45 text-right">Details</span>
           </div>
-        ))}
-      </div>
+          {stats.map((stat) => {
+            const name =
+              stat.id === 'tier1' && stat.type === 'text' ? (
+                <span className="text-sm font-semibold text-black leading-snug">{stat.text}</span>
+              ) : (
+                <span className={`text-sm font-semibold leading-snug min-w-0 ${labelClass}`}>{stat.label}</span>
+              );
+            const details = active ? (
+              stat.id === 'tier1' && stat.type === 'text' ? (
+                <span className="text-sm font-semibold text-black leading-snug text-right">{stat.label}</span>
+              ) : (
+                <div className="flex justify-end">
+                  <StatValue
+                    stat={stat}
+                    active={active}
+                    accent={theme.accent}
+                    staticColor={staticColor}
+                    valueTextClass={valueTextClass}
+                  />
+                </div>
+              )
+            ) : (
+              <div className="flex justify-end">
+                <StatSkeleton whiteBg={lightStats} />
+              </div>
+            );
+            return (
+              <div
+                key={stat.id}
+                className={`grid grid-cols-2 gap-4 items-center ${cellBorderClass} ${
+                  compact ? 'px-4 py-2.5 sm:px-5 sm:py-3' : 'px-4 py-3 sm:px-5'
+                }`}
+                style={{ background: stat.live ? liveStatBg : statBg }}
+              >
+                <div className="min-w-0">{name}</div>
+                <div className="min-w-0">{details}</div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2">
+          {stats.map((stat) => (
+            <div
+              key={stat.id}
+              className={`flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2.5 ${cellBorderClass} ${
+                compact ? 'px-4 py-3 sm:px-4 sm:py-2' : 'px-4 py-3 sm:px-4 sm:py-2.5'
+              }`}
+              style={{
+                background: stat.live ? liveStatBg : statBg,
+              }}
+            >
+              {stat.id === 'tier1' && stat.type === 'text' ? (
+                <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <span className={`text-sm font-black leading-snug ${valueTextClass}`}>{stat.text}</span>
+                  <span className="text-lg leading-none">{stat.label}</span>
+                </div>
+              ) : (
+                <>
+                  {active ? (
+                    <StatValue
+                      stat={stat}
+                      active={active}
+                      accent={theme.accent}
+                      staticColor={staticColor}
+                      valueTextClass={`${valueTextClass} text-xl sm:text-[1.15rem]`}
+                    />
+                  ) : (
+                    <StatSkeleton whiteBg={whiteBg} />
+                  )}
+                  <p className={`text-sm sm:text-[12px] leading-snug min-w-0 ${labelClass}`}>
+                    {stat.label}
+                  </p>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

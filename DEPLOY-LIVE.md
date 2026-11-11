@@ -69,12 +69,12 @@ Your site needs a database. MongoDB Atlas is free.
    | Name | Value |
    |------|--------|
    | `MONGODB_URI` | Your full MongoDB connection string from Part 1 |
-   | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` (your real domain, e.g. erogram.pro) |
+   | `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` (your real domain, e.g. erogramx.com) |
    | `JWT_SECRET` | Any long random string (e.g. 32+ random letters/numbers) |
    | `NEXTAUTH_URL` | Same as `NEXT_PUBLIC_SITE_URL` |
    | `NEXTAUTH_SECRET` | Another long random string |
 
-   For `NEXT_PUBLIC_SITE_URL` and `NEXTAUTH_URL`, use your actual domain (e.g. `https://erogram.pro`).
+   For `NEXT_PUBLIC_SITE_URL` and `NEXTAUTH_URL`, use your actual domain (e.g. `https://erogramx.com`).
 
 5. Click **Deploy**. Wait 2–3 minutes. You’ll get a URL like `erogram-xxx.vercel.app` — the site works there first.
 
@@ -83,13 +83,13 @@ Your site needs a database. MongoDB Atlas is free.
 ## Part 4: Connect your Namecheap domain (5 min)
 
 1. In Vercel: open your project → **Settings** → **Domains**.
-2. Enter your domain (e.g. `erogram.pro` or `www.erogram.pro`) and click **Add**.
+2. Enter your domain (e.g. `erogramx.com` or `www.erogramx.com`) and click **Add**.
 3. Vercel will show you what to add at Namecheap. Usually:
-   - **For root domain (erogram.pro):**
+   - **For root domain (erogramx.com):**
      - Type: **A Record**
      - Host: **@**
      - Value: **76.76.21.21** (Vercel’s IP — confirm in Vercel’s Domains page)
-   - **For www (www.erogram.pro):**
+   - **For www (www.erogramx.com):**
      - Type: **CNAME**
      - Host: **www**
      - Value: **cname.vercel-dns.com** (confirm in Vercel)

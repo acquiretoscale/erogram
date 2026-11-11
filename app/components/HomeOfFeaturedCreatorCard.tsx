@@ -183,7 +183,7 @@ export default function HomeOfFeaturedCreatorCard({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
-          <span className="text-[10px] font-black uppercase tracking-wider text-white">Live</span>
+          <span className="text-[12px] sm:text-[11px] font-black uppercase tracking-wider text-white">Live</span>
         </div>
       ) : null}
     </div>
@@ -202,14 +202,14 @@ export default function HomeOfFeaturedCreatorCard({
       {layout === 'home' ? (
         <>
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/[0.06] bg-white px-3 py-2 sm:px-4 sm:py-2.5">
-            <p className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[8px] font-black uppercase tracking-[0.14em] sm:gap-1.5 sm:text-[9px]">
+            <p className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[12px] sm:text-[11px] font-black uppercase tracking-[0.14em] sm:gap-1.5">
               <OnlyFansIcon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" fill="#00AFF0" />
               <span className="text-[#00AFF0]">FEATURED CREATOR</span>
             </p>
           </div>
           {imagePanel}
           <div className="relative z-10 flex shrink-0 flex-col justify-center gap-2 border-t border-black/[0.06] bg-white px-3 pb-3 pt-2.5 sm:px-4 sm:pb-3.5 sm:pt-3">
-            <p className="flex items-center justify-center gap-1 min-w-0 text-center text-[13px] font-black text-[#0084BD] sm:text-[14px]">
+            <p className="flex items-center justify-center gap-1 min-w-0 text-center text-[12px] sm:text-[11px] font-black text-[#0084BD]">
               <span className="truncate">@{creator.username}</span>
               <TwitterVerifiedIcon className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" />
             </p>
@@ -220,20 +220,20 @@ export default function HomeOfFeaturedCreatorCard({
               }}
             >
               <OnlyFansIcon className="h-7 w-7 sm:h-8 sm:w-8" />
-              <span className="text-[12px] font-black uppercase leading-none tracking-wide text-white sm:text-[14px]">
+              <span className="text-[12px] sm:text-[11px] font-black uppercase leading-none tracking-wide text-white">
                 VISIT ONLYFANS
               </span>
               <ExternalLink className="h-4 w-4 shrink-0 text-white/85 sm:h-[18px] sm:w-[18px]" aria-hidden />
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 py-2 sm:py-2.5">
               {showSubscriberCount && followers > 0 ? (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-black text-gray-800 sm:text-xs">
+                <span className="inline-flex items-center gap-1.5 text-[12px] sm:text-[11px] font-black text-gray-800">
                   <Users className="h-3.5 w-3.5 shrink-0 text-[#00AFF0]" aria-hidden />
                   {formatCount(followers)} {t('ofSearch.subscribers')}
                 </span>
               ) : null}
               {creator.showNewToOfBadge ? (
-                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-600 bg-emerald-500 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm sm:text-[10px]">
+                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-600 bg-emerald-500 px-1.5 py-0.5 text-[12px] sm:text-[11px] font-black uppercase tracking-wide text-white shadow-sm">
                   <span aria-hidden>🔥</span>
                   New to OF
                 </span>
@@ -244,7 +244,7 @@ export default function HomeOfFeaturedCreatorCard({
                 {creator.hashtags.map((tag) => (
                   <span
                     key={tag}
-                    className="shrink-0 whitespace-nowrap rounded-md border border-[#00AFF0]/35 bg-[#00AFF0]/10 px-1.5 py-0.5 text-[9px] font-black capitalize text-[#0084BD] sm:px-2 sm:text-[10px]"
+                    className="shrink-0 whitespace-nowrap rounded-md border border-[#00AFF0]/35 bg-[#00AFF0]/10 px-1.5 py-0.5 text-[12px] sm:text-[11px] font-black capitalize text-[#0084BD] sm:px-2"
                   >
                     #{tag.replace(/\s+/g, '')}
                   </span>

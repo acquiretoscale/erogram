@@ -26,7 +26,7 @@ async function main() {
   if (!advertiser) {
     const res = await advertisersCol.insertOne({
       name: 'AI NSFW Featured',
-      email: 'internal@erogram.pro',
+      email: 'internal@erogram.biz',
       company: 'Internal',
       status: 'active',
       createdAt: new Date(),

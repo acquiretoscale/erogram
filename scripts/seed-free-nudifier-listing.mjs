@@ -73,6 +73,6 @@ const statsResult = await statsCol.updateOne(
 
 console.log('Submission:', subResult.upsertedCount ? 'inserted' : 'updated');
 console.log('Stats/reviews:', statsResult.upsertedCount ? 'inserted' : 'updated');
-console.log(`Live at: https://erogram.pro/ainsfw/${SLUG}`);
+console.log(`Live at: https://erogramx.com/ainsfw/${SLUG}`);
 
 await mongoose.disconnect();

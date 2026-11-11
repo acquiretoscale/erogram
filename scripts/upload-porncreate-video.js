@@ -1,5 +1,5 @@
 /**
- * Upload the PornCreate / DENUDE AI ad video to R2 with SEO name + Erogram.pro metadata,
+ * Upload the PornCreate / DENUDE AI ad video to R2 with SEO name + Erogramx.com metadata,
  * then backfill the same site/copyright metadata onto every existing ad video.
  *
  * Run: node --env-file=.env.local scripts/upload-porncreate-video.js <path-to-video>
@@ -62,8 +62,8 @@ function buildMetadata({ advertiser, niche, campaign }) {
     advertiser: slugify(advertiser).slice(0, 120),
     niche: slugify(niche).slice(0, 120),
     platform: 'erogram',
-    site: 'erogram.pro',
-    copyright: 'Erogram.pro',
+    site: 'erogramx.com',
+    copyright: 'Erogramx.com',
     campaign: slugify(campaign || '').slice(0, 120),
   };
 }
@@ -145,7 +145,7 @@ async function backfillMetadata(skipKey) {
 
       const head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: obj.Key }));
       const existing = head.Metadata || {};
-      if (existing.site === 'erogram.pro' && existing.copyright === 'Erogram.pro') continue;
+      if (existing.site === 'erogramx.com' && existing.copyright === 'Erogramx.com') continue;
 
       await r2.send(new CopyObjectCommand({
         Bucket: R2_BUCKET_NAME,
@@ -158,8 +158,8 @@ async function backfillMetadata(skipKey) {
         Metadata: {
           ...existing,
           platform: existing.platform || 'erogram',
-          site: 'erogram.pro',
-          copyright: 'Erogram.pro',
+          site: 'erogramx.com',
+          copyright: 'Erogramx.com',
         },
       }));
       updated++;
@@ -184,7 +184,7 @@ async function main() {
   console.log(`  Niche: ${NICHE}`);
   console.log(`  Destination: ${DESTINATION}`);
 
-  console.log('\nBackfilling Erogram.pro metadata on existing ad videos...');
+  console.log('\nBackfilling Erogramx.com metadata on existing ad videos...');
   const key = url.replace(`${R2_PUBLIC_URL}/`, '');
   const updated = await backfillMetadata(key);
   console.log(`✓ Metadata updated on ${updated} existing videos`);

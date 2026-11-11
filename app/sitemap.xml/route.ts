@@ -1,7 +1,8 @@
 import connectDB from '@/lib/db/mongodb';
 import { Group, Article, Bot, AINsfwSubmission } from '@/lib/models';
-import { categories } from '@/app/groups/constants';
-import { AI_NSFW_TOOLS, toolSlug } from '@/app/ainsfw/data';
+import { categories, categorySlug, GROUPS_FEED_PAGE_SIZE } from '@/app/groups/constants';
+import { AI_NSFW_TOOLS, CATEGORY_SLUGS, categoryToSlug, toolSlug } from '@/app/ainsfw/data';
+import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
 import { EXPLORE_CATEGORIES } from '@/lib/explore/topPornSitesData';
 import { SEARCH_DISCOVERY_ORIGIN } from '@/lib/seo/publicOrigins';
 
@@ -12,10 +13,22 @@ interface SitemapEntry {
   priority: string;
 }
 
-function entry(path: string, changefreq: string, priority: number, lastmod?: Date): SitemapEntry {
+function lastmodValue(value?: Date | string | null): string | undefined {
+  if (!value) return undefined;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+function entry(
+  path: string,
+  changefreq: string,
+  priority: number,
+  lastmod?: Date | string | null,
+): SitemapEntry {
   return {
     loc: `${SEARCH_DISCOVERY_ORIGIN}${path}`,
-    lastmod: (lastmod || new Date()).toISOString(),
+    lastmod: lastmodValue(lastmod) || new Date().toISOString(),
     changefreq,
     priority: priority.toFixed(1),
   };
@@ -38,7 +51,7 @@ export async function GET() {
   try {
     await connectDB();
 
-    const [groups, bots, articles, ainsfwSubmissions, dbCountries, categoryCounts, countryCounts] =
+    const [groups, groupFeedCount, bots, articles, ainsfwSubmissions, dbCountries, categoryCounts, countryCounts] =
       await Promise.all([
         Group.find({
           status: 'approved',
@@ -47,6 +60,12 @@ export async function GET() {
         })
           .select('slug updatedAt')
           .lean(),
+        Group.countDocuments({
+          status: 'approved',
+          isAdvertisement: { $ne: true },
+          premiumOnly: { $ne: true },
+          category: { $ne: 'Hentai' },
+        }),
         Bot.find({ status: 'approved' }).select('slug updatedAt').lean(),
         Article.find({ status: 'published' }).select('slug updatedAt publishedAt').lean(),
         AINsfwSubmission.find({ status: 'approved', paymentStatus: 'paid' })
@@ -68,66 +87,89 @@ export async function GET() {
     const countries = (dbCountries as string[]).filter((c) => c && c !== 'All');
 
     const entries: SitemapEntry[] = [];
+    const seen = new Set<string>();
+    const push = (
+      path: string,
+      changefreq: string,
+      priority: number,
+      lastmod?: Date | string | null,
+    ) => {
+      if (!path || path === '/' || seen.has(path)) return;
+      seen.add(path);
+      entries.push(entry(path, changefreq, priority, lastmod));
+    };
 
     entries.push(entry('/', 'daily', 1.0));
+    seen.add('/');
 
-    entries.push(entry('/groups', 'daily', 0.9));
-    entries.push(entry('/bots', 'daily', 0.9));
-    entries.push(entry('/blog', 'daily', 0.9));
-    entries.push(entry('/ainsfw', 'daily', 0.9));
-    entries.push(entry('/best-porn', 'daily', 0.9));
+    push('/groups', 'daily', 0.9);
+    const groupPages = Math.ceil(groupFeedCount / GROUPS_FEED_PAGE_SIZE);
+    for (let p = 2; p <= groupPages; p++) {
+      push(`/groups/page/${p}`, 'weekly', 0.5);
+    }
+    push('/bots', 'daily', 0.9);
+    push('/blog', 'daily', 0.9);
+    push('/ainsfw', 'daily', 0.9);
+    push('/best-porn', 'daily', 0.9);
 
     for (const g of groups as any[]) {
-      entries.push(entry(`/${g.slug}`, 'daily', 0.6, g.updatedAt));
+      if (!g.slug) continue;
+      push(`/${g.slug}`, 'daily', 0.6, g.updatedAt);
     }
 
     for (const b of bots as any[]) {
-      entries.push(entry(`/${b.slug}`, 'weekly', 0.8, b.updatedAt));
+      if (!b.slug) continue;
+      push(`/${b.slug}`, 'weekly', 0.8, b.updatedAt);
     }
 
     const builtInSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
     for (const tool of AI_NSFW_TOOLS) {
-      entries.push(entry(`/ainsfw/${tool.slug}`, 'monthly', 0.9));
+      push(`/ainsfw/${tool.slug}`, 'monthly', 0.9);
     }
     for (const sub of ainsfwSubmissions as any[]) {
       const slug = toolSlug(sub.category, sub.name);
       if (!builtInSlugs.has(slug)) {
-        entries.push(entry(`/ainsfw/${slug}`, 'monthly', 0.9));
+        push(`/ainsfw/${slug}`, 'monthly', 0.9, sub.updatedAt);
       }
     }
+    for (const name of Object.values(CATEGORY_SLUGS)) {
+      push(`/ainsfw/${categoryToSlug(name)}`, 'weekly', 0.8);
+    }
 
-    entries.push(entry('/best-telegram-groups', 'weekly', 0.8));
+    push('/best-telegram-groups', 'weekly', 0.8);
     for (const cat of categories) {
       if (cat === 'All' || !activeCategories.has(cat)) continue;
-      entries.push(
-        entry(`/best-telegram-groups/${encodeURIComponent(cat.toLowerCase())}`, 'weekly', 0.8),
-      );
+      push(`/best-telegram-groups/${categorySlug(cat)}`, 'weekly', 0.8);
     }
 
     for (const c of countries) {
       if (!activeCountries.has(c)) continue;
-      entries.push(
-        entry(
-          `/best-telegram-groups/country/${encodeURIComponent(c.toLowerCase())}`,
-          'weekly',
-          0.8,
-        ),
+      push(
+        `/best-telegram-groups/country/${encodeURIComponent(c.toLowerCase())}`,
+        'weekly',
+        0.8,
       );
     }
 
     for (const cat of EXPLORE_CATEGORIES) {
-      entries.push(entry(`/${cat.slug}`, 'weekly', 0.7));
+      push(`/${cat.slug}`, 'weekly', 0.7);
     }
 
     for (const c of countries) {
-      entries.push(entry(`/groups/country/${encodeURIComponent(c)}`, 'weekly', 0.7));
+      push(`/groups/country/${encodeURIComponent(c)}`, 'weekly', 0.7);
     }
 
     for (const a of articles as any[]) {
-      entries.push(entry(`/blog/${a.slug}`, 'daily', 0.9, a.updatedAt || a.publishedAt));
+      if (!a.slug) continue;
+      push(`/blog/${a.slug}`, 'daily', 0.9, a.updatedAt || a.publishedAt);
+    }
+    for (const slug of BLOG_CATEGORY_SLUGS) {
+      push(`/blog/category/${slug}`, 'weekly', 0.8);
     }
 
-    entries.push(entry('/ofsearch', 'daily', 0.6));
+    push('/best-onlyfans-accounts', 'weekly', 0.8);
+    push('/ofsearch', 'daily', 0.6);
+    push('/tags', 'weekly', 0.6);
 
     const xml = toXml(entries);
     return new Response(xml, {
