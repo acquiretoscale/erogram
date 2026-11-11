@@ -32,6 +32,9 @@ restart_live() {
     pm2 list
     exit 1
   fi
+  # NEXT_DIST_DIR is only for the side build. If it leaks into pm2, the
+  # live process looks for .next-new and crash-loops (502).
+  unset NEXT_DIST_DIR
   pm2 restart "$PM2_APP" --update-env
 }
 
@@ -68,9 +71,10 @@ fi
 
 echo "==> build into .next-new (live .next stays until this succeeds)"
 rm -rf .next-new
-export EROGRAM_SKIP_TYPECHECK=1
-export NEXT_DIST_DIR=.next-new
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}"
+# Prefix only this command. Do not export NEXT_DIST_DIR into the shell that restarts pm2.
+EROGRAM_SKIP_TYPECHECK=1 \
+NEXT_DIST_DIR=.next-new \
+NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=2048}" \
 npm run build
 
 if [[ ! -f .next-new/BUILD_ID ]]; then
