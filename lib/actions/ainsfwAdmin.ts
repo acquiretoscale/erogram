@@ -3,7 +3,9 @@
 import jwt from 'jsonwebtoken';
 import sharp from 'sharp';
 import connectDB from '@/lib/db/mongodb';
-import { User, AINsfwToolStats, AINsfwSubmission } from '@/lib/models';
+import { User, AINsfwToolStats, AINsfwSubmission, Campaign } from '@/lib/models';
+import { adminSetFeatured, revalidateAinsfwPublic } from '@/lib/actions/ainsfw';
+import { isPublisherToken } from '@/lib/auth/publisherAccess';
 import { uploadToR2, isR2Configured, deleteFromR2 } from '@/lib/r2';
 import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 import { resolveGallery, type ToolContentFields } from '@/lib/ainsfw/toolContent';
@@ -19,6 +21,7 @@ function statsSlugQuery(slug: string): string | { $in: string[] } {
 
 async function requireAdmin(token: string) {
   if (!token) throw new Error('Unauthorized');
+  if (isPublisherToken(token)) return;
   const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
   await connectDB();
   const user = await User.findById(decoded.id).select('isAdmin').lean() as { isAdmin?: boolean } | null;
@@ -80,6 +83,53 @@ export async function adminGetToolGallery(token: string, slug: string): Promise<
   return resolveGallery(slug, fieldsFromDoc(doc));
 }
 
+export type FeaturedDurationChoice = 'off' | '7' | '14' | '30' | 'lifetime';
+
+export type EditorReviewBlock = { title: string; body: string };
+
+export async function adminLoadToolEditor(token: string, slug: string): Promise<{
+  categories: string[];
+  ctaText: string;
+  featuredDuration: FeaturedDurationChoice;
+  reviewIntro: string;
+  reviewBlocks: EditorReviewBlock[];
+}> {
+  await requireAdmin(token);
+  const [stats, submission] = await Promise.all([
+    getStatsDoc(slug),
+    AINsfwSubmission.findOne({ slug: slugKey(slug) }).select('categories category featured featuredExpiresAt').lean() as Promise<any>,
+  ]);
+  const fromStats = Array.isArray(stats?.categoriesOverride) ? stats.categoriesOverride.filter(Boolean) : [];
+  const fromSub = Array.isArray(submission?.categories) && submission.categories.length
+    ? submission.categories
+    : submission?.category
+      ? [submission.category]
+      : [];
+  const categories = (fromStats.length ? fromStats : fromSub).slice(0, 6);
+  const duration = (stats?.featuredDuration || '') as FeaturedDurationChoice;
+  const featuredOn = !!stats?.featured || !!submission?.featured;
+  let featuredDuration: FeaturedDurationChoice = 'off';
+  if (featuredOn && (duration === '7' || duration === '14' || duration === '30' || duration === 'lifetime')) {
+    featuredDuration = duration;
+  } else if (featuredOn && !stats?.featuredExpiresAt && !submission?.featuredExpiresAt) {
+    featuredDuration = 'lifetime';
+  } else if (featuredOn) {
+    featuredDuration = '30';
+  }
+  const highlights = Array.isArray(stats?.editorialReview?.featureHighlights)
+    ? stats.editorialReview.featureHighlights
+        .map((h: any) => ({ title: String(h?.title || ''), body: String(h?.body || '') }))
+        .filter((h: EditorReviewBlock) => h.title || h.body)
+    : [];
+  return {
+    categories,
+    ctaText: stats?.ctaText || '',
+    featuredDuration,
+    reviewIntro: stats?.editorialReview?.shortDescription || '',
+    reviewBlocks: highlights,
+  };
+}
+
 export async function adminSaveToolContent(
   token: string,
   slug: string,
@@ -89,11 +139,17 @@ export async function adminSaveToolContent(
     downvotes?: number;
     imageOverride?: string;
     tryNowUrl?: string;
+    categories?: string[];
+    ctaText?: string;
+    featuredDuration?: FeaturedDurationChoice;
+    reviewIntro?: string;
+    reviewBlocks?: EditorReviewBlock[];
   },
 ): Promise<ToolContentFields & { upvotes: number; downvotes: number }> {
   await requireAdmin(token);
   const key = await ensureStatsDoc(slug);
   const set: Record<string, unknown> = {};
+  const unset: Record<string, 1> = {};
   if (data.description !== undefined) set.descriptionOverride = data.description.trim();
   if (data.imageOverride !== undefined) {
     set.imageOverride = data.imageOverride.trim();
@@ -106,19 +162,85 @@ export async function adminSaveToolContent(
   }
   if (data.upvotes !== undefined) set.upvotes = Math.max(0, data.upvotes);
   if (data.downvotes !== undefined) set.downvotes = Math.max(0, data.downvotes);
+  if (data.ctaText !== undefined) set.ctaText = data.ctaText.trim().slice(0, 80);
+
+  const categories = Array.isArray(data.categories)
+    ? [...new Set(data.categories.map((c) => c.trim()).filter(Boolean))].slice(0, 6)
+    : undefined;
+  if (categories) set.categoriesOverride = categories;
+
+  if (data.reviewIntro !== undefined || data.reviewBlocks !== undefined) {
+    const intro = (data.reviewIntro || '').trim();
+    const blocks = (data.reviewBlocks || [])
+      .map((b) => ({ title: (b.title || '').trim(), body: (b.body || '').trim() }))
+      .filter((b) => b.title && b.body)
+      .slice(0, 6);
+    if (!intro && blocks.length === 0) {
+      unset.editorialReview = 1;
+    } else {
+      set.editorialReview = { shortDescription: intro, featureHighlights: blocks };
+    }
+  }
+
+  if (data.featuredDuration) {
+    if (data.featuredDuration === 'off') {
+      set.featured = false;
+      set.featuredDuration = '';
+      set.featuredExpiresAt = null;
+    } else {
+      const days = data.featuredDuration === 'lifetime' ? 0 : Number(data.featuredDuration);
+      const exp = days ? new Date(Date.now() + days * 24 * 60 * 60 * 1000) : null;
+      set.featured = true;
+      set.featuredDuration = data.featuredDuration;
+      set.featuredExpiresAt = exp;
+    }
+  }
+
+  const update: Record<string, unknown> = {};
+  if (Object.keys(set).length) update.$set = set;
+  if (Object.keys(unset).length) update.$unset = unset;
 
   const doc = await AINsfwToolStats.findOneAndUpdate(
     { slug: key },
-    { $set: set },
+    update,
     { upsert: true, new: true },
   ).lean() as any;
 
-  if (typeof set.tryNowUrlOverride === 'string') {
-    await AINsfwSubmission.updateMany(
-      { slug: slugKey(slug) },
-      { $set: { tryNowUrl: set.tryNowUrlOverride } },
-    );
+  const submissionSet: Record<string, unknown> = {};
+  if (typeof set.tryNowUrlOverride === 'string') submissionSet.tryNowUrl = set.tryNowUrlOverride;
+  if (categories?.length) {
+    submissionSet.categories = categories;
+    submissionSet.category = categories[0];
   }
+  if (data.featuredDuration) {
+    submissionSet.featured = data.featuredDuration !== 'off';
+    submissionSet.boosted = data.featuredDuration !== 'off';
+    submissionSet.featuredExpiresAt = data.featuredDuration === 'off' || data.featuredDuration === 'lifetime'
+      ? null
+      : set.featuredExpiresAt;
+    submissionSet.boostExpiresAt = submissionSet.featuredExpiresAt;
+  }
+  if (Object.keys(submissionSet).length) {
+    await AINsfwSubmission.updateMany({ slug: slugKey(slug) }, { $set: submissionSet });
+  }
+
+  if (data.featuredDuration) {
+    const on = data.featuredDuration !== 'off';
+    await adminSetFeatured(key, on);
+    const fresh = await AINsfwToolStats.findOne({ slug: key }).select('campaignId').lean() as { campaignId?: unknown } | null;
+    if (fresh?.campaignId) {
+      const end = data.featuredDuration === 'lifetime' || data.featuredDuration === 'off'
+        ? new Date(new Date().getFullYear() + 5, new Date().getMonth(), new Date().getDate())
+        : (set.featuredExpiresAt as Date);
+      await Campaign.findByIdAndUpdate(fresh.campaignId, {
+        $set: on
+          ? { status: 'active', isVisible: true, endDate: end, ...(set.ctaText ? { buttonText: set.ctaText } : {}) }
+          : { status: 'paused', isVisible: false },
+      });
+    }
+  }
+
+  await revalidateAinsfwPublic(slug);
 
   return {
     ...fieldsFromDoc(doc),
@@ -229,6 +351,7 @@ export async function adminUploadToolCoverImage(
     { $set: { imageOverride: url, coverManaged: true } },
     { upsert: true },
   );
+  await AINsfwSubmission.updateMany({ slug: slugKey(slug) }, { $set: { image: url } });
 
   if (oldCover && oldCover !== url && (oldCover.includes('r2.dev') || oldCover.includes(process.env.R2_PUBLIC_URL || '___none___'))) {
     await deleteFromR2(oldCover).catch(() => {});

@@ -2,6 +2,7 @@
 import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
@@ -22,6 +23,7 @@ import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
 import { categoryToSlug } from './data';
 import { toolMatchesCategory } from '@/lib/ainsfw/categoryListings';
+import { approveAinsfwDraft, listAinsfwDrafts } from '@/lib/actions/publisher';
 import type { AINsfwToolCategory } from './types';
 
 const HERO_CATEGORY_LINKS: AINsfwToolCategory[] = [
@@ -114,10 +116,28 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
   const [scores, setScores] = useState<Record<string, number>>(() => loadAllScores(allStats));
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [drafts, setDrafts] = useState<{ id: string; name: string; category: string }[]>([]);
+  const [approvingId, setApprovingId] = useState('');
 
   // ISR HTML keeps the server order. After load, shuffle once so this visitor
   // gets a different ad without making the crawl HTML change.
   const [liveFeedAds, setLiveFeedAds] = useState<FeedCampaign[]>(feedCampaigns);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const allowed = localStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isPublisher') === 'true';
+    if (!token || !allowed) return;
+    setIsAdmin(localStorage.getItem('isAdmin') === 'true');
+    listAinsfwDrafts(token).then(setDrafts).catch(() => {});
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.isAdmin) setIsAdmin(true);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const shuffle = (list: FeedCampaign[]) => {
@@ -206,6 +226,40 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
       </div>
 
       <div className="max-w-6xl mx-auto px-3 sm:px-8 lg:px-12 pt-3 sm:pt-4 pb-8">
+        {drafts.length > 0 ? (
+          <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-950/40 px-4 py-3">
+            <p className="text-[11px] font-black uppercase tracking-wide text-amber-200 mb-2">Drafts waiting for approval</p>
+            <ul className="space-y-2">
+              {drafts.map((draft) => (
+                <li key={draft.id} className="flex items-center justify-between gap-3 text-sm text-white">
+                  <span className="truncate">{draft.name}{draft.category ? <span className="text-white/40"> · {draft.category}</span> : null}</span>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      disabled={approvingId === draft.id}
+                      onClick={() => {
+                        const token = localStorage.getItem('token') || '';
+                        setApprovingId(draft.id);
+                        approveAinsfwDraft(token, draft.id)
+                          .then(() => {
+                            setDrafts((prev) => prev.filter((row) => row.id !== draft.id));
+                            router.refresh();
+                          })
+                          .catch(() => {})
+                          .finally(() => setApprovingId(''));
+                      }}
+                      className="shrink-0 px-2 py-1 rounded bg-[#22c55e] text-black text-[10px] font-black uppercase"
+                    >
+                      {approvingId === draft.id ? '...' : 'Approve'}
+                    </button>
+                  ) : (
+                    <span className="shrink-0 text-[10px] font-bold uppercase text-amber-200">Draft</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {/* Hero — same content, futuristic condensed italic scanline design treatment */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

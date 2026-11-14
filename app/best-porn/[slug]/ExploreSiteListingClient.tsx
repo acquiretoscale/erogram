@@ -89,6 +89,7 @@ export default function ExploreSiteListingClient({
 }) {
   const rootSlug = exploreListingRootSlug(listing.slug, listing.categorySlug);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [externalUrl, setExternalUrl] = useState(listing.externalUrl);
@@ -106,7 +107,13 @@ export default function ExploreSiteListingClient({
   }, [listing.externalUrl, listing.description, listing.image]);
 
   useEffect(() => {
-    setIsAdmin(localStorage.getItem('isAdmin') === 'true');
+    const admin = localStorage.getItem('isAdmin') === 'true';
+    const publisher = localStorage.getItem('isPublisher') === 'true';
+    setIsAdmin(admin);
+    setCanEdit(admin || publisher);
+    if ((admin || publisher) && new URLSearchParams(window.location.search).get('edit') === '1') {
+      setEditing(true);
+    }
     const token = localStorage.getItem('token');
     if (!token) return;
     fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
@@ -114,7 +121,15 @@ export default function ExploreSiteListingClient({
       .then((data) => {
         if (data?.isAdmin) {
           setIsAdmin(true);
+          setCanEdit(true);
           localStorage.setItem('isAdmin', 'true');
+        }
+        if (data?.isPublisher) {
+          setCanEdit(true);
+          localStorage.setItem('isPublisher', 'true');
+        }
+        if ((data?.isAdmin || data?.isPublisher) && new URLSearchParams(window.location.search).get('edit') === '1') {
+          setEditing(true);
         }
       })
       .catch(() => {});
@@ -266,7 +281,7 @@ export default function ExploreSiteListingClient({
                 {listing.name}
               </h1>
               <div className="flex items-center gap-2 shrink-0 mt-2">
-                {isAdmin ? (
+                {canEdit ? (
                   <button
                     type="button"
                     onClick={() => setEditing((v) => !v)}

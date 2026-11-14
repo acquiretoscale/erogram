@@ -285,10 +285,12 @@ function ReviewCta({
   onClick,
   disabled,
   toolName,
+  label,
 }: {
   onClick: () => void;
   disabled: boolean;
   toolName: string;
+  label?: string;
 }) {
   const { t, tryFree } = useAinsfwChrome();
   return (
@@ -298,7 +300,7 @@ function ReviewCta({
         disabled={disabled}
         className={ainsfwCtaButtonClass('md')}
       >
-        {disabled ? t('ainsfw.opening', 'Opening...') : tryFree(toolName)}
+        {disabled ? t('ainsfw.opening', 'Opening...') : (label || tryFree(toolName))}
       </button>
     </div>
   );
@@ -613,6 +615,7 @@ function ReviewGlossary({
 
 export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], browseCategories }: ToolDetailClientProps) {
   const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
+  const visitLabel = tool.ctaText?.trim() || '';
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/'))
@@ -648,7 +651,24 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
       const savedVote = localStorage.getItem(`ainsfw_vote_${tool.slug}`) as 'up' | 'down' | null;
       if (savedVote) setUserVote(savedVote);
       setBookmarked(localStorage.getItem(getBookmarkKey(tool.slug)) === '1');
-      setIsAdmin(localStorage.getItem('isAdmin') === 'true');
+      const publisher = localStorage.getItem('isPublisher') === 'true';
+      const admin = localStorage.getItem('isAdmin') === 'true';
+      setIsAdmin(admin || publisher);
+      if ((admin || publisher) && new URLSearchParams(window.location.search).get('edit') === '1') {
+        setAdminEdit(true);
+      }
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d?.isAdmin || d?.isPublisher) {
+              setIsAdmin(true);
+              if (new URLSearchParams(window.location.search).get('edit') === '1') setAdminEdit(true);
+            }
+          })
+          .catch(() => {});
+      }
     } catch {}
 
     // Gallery from admin/listing-owner saves only (API already applies resolveGallery).
@@ -845,7 +865,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     disabled={isRedirecting}
                     className={ainsfwCtaButtonClass('md', 'w-full')}
                   >
-                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
+                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
                   </button>
                 </div>
                 )}
@@ -1068,7 +1088,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   disabled={isRedirecting}
                   className={ainsfwCtaButtonClass('full', 'max-w-md')}
                 >
-                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
+                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
                 </button>
               </div>
 
@@ -1134,6 +1154,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     onClick={handleVisit}
                     disabled={isRedirecting}
                     toolName={tool.name}
+                    label={visitLabel}
                   />
 
                   <div className="space-y-8">
@@ -1268,7 +1289,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     disabled={isRedirecting}
                     className={ainsfwCtaButtonClass('full', 'max-w-md')}
                   >
-                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : tryFree(tool.name)}
+                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
                   </button>
                 </div>
               )}

@@ -42,6 +42,8 @@ export interface AINsfwTool {
   /** Paid listing placements (up to plan limit); falls back to `category` when empty. */
   categories?: string[];
   submissionTier?: string;
+  /** Custom visit-button words. Empty keeps the usual button. */
+  ctaText?: string;
 }
 
 export type AINsfwCategory = 'All' | AINsfwToolCategory;

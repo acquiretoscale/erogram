@@ -303,8 +303,8 @@ export default function AuthMethods({
         <>
           <form onSubmit={handleEmailSubmit} className="flex flex-col gap-2">
             <input
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               required
               placeholder="Email"
               value={email}

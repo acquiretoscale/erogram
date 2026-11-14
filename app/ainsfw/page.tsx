@@ -79,7 +79,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const allStats = await getAllToolStats([...new Set([...allTools, ...allPaidSubmissions].map((t) => t.slug))]);
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayTools = allTools.map((t) => mergeToolContent(t, allStats[t.slug]));
-  const toolsBySlug = new Map([...allTools, ...allPaidSubmissions].map((t) => [t.slug, t]));
+  const toolsBySlug = new Map(displayTools.map((t) => [t.slug, t]));
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredHubSlugs = await resolveFeaturedHubSlugs();
   const recentTools = currentPage === 1
@@ -90,7 +90,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
       )
         .map((t) => mergeToolContent(t, allStats[t.slug]))
     : [];
-  const categoryOptions = getPopulatedHubCategories(catalogWithPlacements, allPaidSubmissions);
+  const categoryOptions = getPopulatedHubCategories(displayTools, []);
   const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {

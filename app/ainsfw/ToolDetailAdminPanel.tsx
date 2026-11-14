@@ -1,19 +1,31 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Camera, Pencil, Save, Star, Trash2, X } from 'lucide-react';
 import type { AINsfwTool } from './types';
+import { AINSFW_CATEGORIES } from './types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import {
   adminDeleteToolCoverImage,
   adminDeleteToolGalleryImage,
+  adminLoadToolEditor,
   adminSaveToolContent,
   adminSetToolFeaturedImage,
   adminUploadToolCoverImage,
   adminUploadToolGalleryImage,
+  type FeaturedDurationChoice,
 } from '@/lib/actions/ainsfwAdmin';
 
 const PLACEHOLDER = '/assets/image.jpg';
+const CATEGORY_CHOICES = AINSFW_CATEGORIES.filter((c) => c !== 'All');
+const FEATURED_CHOICES: { id: FeaturedDurationChoice; label: string }[] = [
+  { id: 'off', label: 'Off' },
+  { id: '7', label: '7 days' },
+  { id: '14', label: '14 days' },
+  { id: '30', label: '30 days' },
+  { id: 'lifetime', label: 'Lifetime' },
+];
 
 function sameImage(a: string, b: string) {
   if (!a || !b) return false;
@@ -45,6 +57,7 @@ export default function ToolDetailAdminPanel({
   onVotesChange,
   onClose,
 }: ToolDetailAdminPanelProps) {
+  const router = useRouter();
   const galleryUploadRef = useRef<HTMLInputElement>(null);
   const coverUploadRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState(tool.description);
@@ -53,12 +66,46 @@ export default function ToolDetailAdminPanel({
   const [upvotes, setUpvotes] = useState(initialStats?.upvotes ?? 0);
   const [downvotes, setDownvotes] = useState(initialStats?.downvotes ?? 0);
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<string[]>(
+    (tool.categories?.length ? tool.categories : [tool.category]).slice(0, 6),
+  );
+  const [ctaText, setCtaText] = useState(tool.ctaText || '');
+  const [featuredDuration, setFeaturedDuration] = useState<FeaturedDurationChoice>('off');
+  const [reviewIntro, setReviewIntro] = useState('');
+  const [reviewBlocks, setReviewBlocks] = useState<{ title: string; body: string }[]>([{ title: '', body: '' }]);
+  const [editorReady, setEditorReady] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [busyUrl, setBusyUrl] = useState<string | null>(null);
 
   const token = () => (typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '');
   const coverPreview = cover && !sameImage(cover, PLACEHOLDER) ? cover : '';
+
+  useEffect(() => {
+    let cancelled = false;
+    adminLoadToolEditor(token(), tool.slug)
+      .then((editor) => {
+        if (cancelled) return;
+        if (editor.categories.length) setCategories(editor.categories.slice(0, 6));
+        setCtaText(editor.ctaText || '');
+        setFeaturedDuration(editor.featuredDuration || 'off');
+        setReviewIntro(editor.reviewIntro || '');
+        setReviewBlocks(editor.reviewBlocks.length ? editor.reviewBlocks : [{ title: '', body: '' }]);
+        setEditorReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tool.slug]);
+
+  const toggleCategory = (cat: string) => {
+    setCategories((prev) => {
+      if (prev.includes(cat)) return prev.length === 1 ? prev : prev.filter((c) => c !== cat);
+      if (prev.length >= 6) return prev;
+      return [...prev, cat];
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -69,11 +116,13 @@ export default function ToolDetailAdminPanel({
         upvotes,
         downvotes,
         imageOverride: cover,
+        ...(editorReady ? { categories, ctaText, featuredDuration, reviewIntro, reviewBlocks } : {}),
       });
       onDescriptionChange(description);
       onTryNowUrlChange(tryNowUrl.trim());
       onVotesChange(result.upvotes, result.downvotes);
       onFeaturedChange(result.imageOverride || cover || PLACEHOLDER);
+      router.refresh();
       onClose();
     } catch (e: any) {
       alert(e.message || 'Save failed');
@@ -178,7 +227,7 @@ export default function ToolDetailAdminPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm overflow-y-auto py-10">
-      <div className="w-full max-w-2xl mx-4 rounded-2xl border border-white/10 bg-[#0a140f] p-6 space-y-4">
+      <div className="w-full max-w-2xl mx-4 rounded-2xl border border-white/10 bg-[#0a140f] p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-black text-white">Edit {tool.name}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white">
@@ -318,6 +367,101 @@ export default function ToolDetailAdminPanel({
             rows={5}
             className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50 resize-y"
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Categories (up to 6)</label>
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORY_CHOICES.map((cat) => {
+              const on = categories.includes(cat);
+              const full = !on && categories.length >= 6;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  disabled={full}
+                  onClick={() => toggleCategory(cat)}
+                  className={`rounded px-2 py-1 text-[10px] font-black border transition-colors disabled:opacity-30 ${
+                    on ? 'bg-[#22c55e]/25 text-white border-[#22c55e]/50' : 'bg-white/10 text-gray-200 border-white/15'
+                  }`}
+                >
+                  {on ? '✓ ' : ''}{cat}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Button text</label>
+          <input
+            type="text"
+            value={ctaText}
+            maxLength={80}
+            onChange={(e) => setCtaText(e.target.value)}
+            placeholder="Leave empty for the usual button"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Featured</label>
+          <div className="flex flex-wrap gap-1.5">
+            {FEATURED_CHOICES.map((choice) => (
+              <button
+                key={choice.id}
+                type="button"
+                onClick={() => setFeaturedDuration(choice.id)}
+                className={`rounded px-2.5 py-1 text-[11px] font-black border ${
+                  featuredDuration === choice.id
+                    ? 'bg-[#22c55e] text-black border-[#22c55e]'
+                    : 'bg-white/10 text-gray-200 border-white/15'
+                }`}
+              >
+                {choice.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Review</label>
+          <textarea
+            value={reviewIntro}
+            onChange={(e) => setReviewIntro(e.target.value)}
+            rows={4}
+            placeholder="Intro"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50 resize-y mb-2"
+          />
+          <div className="space-y-2">
+            {reviewBlocks.map((block, i) => (
+              <div key={i} className="rounded-lg border border-white/10 p-2 space-y-2">
+                <input
+                  type="text"
+                  value={block.title}
+                  onChange={(e) => setReviewBlocks((prev) => prev.map((b, idx) => idx === i ? { ...b, title: e.target.value } : b))}
+                  placeholder="Section title"
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50"
+                />
+                <textarea
+                  value={block.body}
+                  onChange={(e) => setReviewBlocks((prev) => prev.map((b, idx) => idx === i ? { ...b, body: e.target.value } : b))}
+                  rows={3}
+                  placeholder="Section text"
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50 resize-y"
+                />
+              </div>
+            ))}
+          </div>
+          {reviewBlocks.length < 6 && (
+            <button
+              type="button"
+              onClick={() => setReviewBlocks((prev) => [...prev, { title: '', body: '' }])}
+              className="mt-2 text-[11px] font-black uppercase tracking-wide text-[#22c55e]"
+            >
+              Add section
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

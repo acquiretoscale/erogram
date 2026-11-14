@@ -12,6 +12,7 @@ import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { RtaBadge } from '@/components/AgeGate';
 import ErogramWordmark from '@/components/ErogramWordmark';
 import { TelegramPlaneIcon } from '@/lib/icons/TelegramPlaneIcon';
+import PublisherNewListing from '@/components/publisher/PublisherNewListing';
 
 function MastheadAdSlot() {
   const [cta, setCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
@@ -232,6 +233,7 @@ function useMastheadAuth() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isPublisher, setIsPublisher] = useState(false);
   const [listings, setListings] = useState<{ hasListings: boolean; inReviewCount: number; hasPaidCampaign: boolean } | null>(null);
   const [ainsfw, setAinsfw] = useState<{ hasListings: boolean; inReviewCount: number } | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -244,6 +246,7 @@ function useMastheadAuth() {
     setFirstName(localStorage.getItem('firstName'));
     setPhotoUrl(localStorage.getItem('photoUrl'));
     setIsAdmin(localStorage.getItem('isAdmin') === 'true');
+    setIsPublisher(localStorage.getItem('isPublisher') === 'true');
     setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
     if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) setIsAppInstalled(true);
     const onPrompt = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -256,6 +259,7 @@ function useMastheadAuth() {
         .then((d) => {
           if (d.premium) setIsPremium(true);
           if (d.isAdmin) { setIsAdmin(true); localStorage.setItem('isAdmin', 'true'); }
+          if (d.isPublisher) { setIsPublisher(true); localStorage.setItem('isPublisher', 'true'); }
           if (d.username) { setUsername(d.username); localStorage.setItem('username', d.username); }
           if (d.firstName) { setFirstName(d.firstName); localStorage.setItem('firstName', d.firstName); }
           else { setFirstName(null); localStorage.removeItem('firstName'); }
@@ -285,8 +289,8 @@ function useMastheadAuth() {
   }, []);
 
   const logout = () => {
-    ['token', 'username', 'isAdmin', 'firstName', 'photoUrl'].forEach((k) => localStorage.removeItem(k));
-    setUsername(null); setFirstName(null); setPhotoUrl(null); setIsPremium(false); setIsAdmin(false); setListings(null); setAinsfw(null);
+    ['token', 'username', 'isAdmin', 'isPublisher', 'firstName', 'photoUrl'].forEach((k) => localStorage.removeItem(k));
+    setUsername(null); setFirstName(null); setPhotoUrl(null); setIsPremium(false); setIsAdmin(false); setIsPublisher(false); setListings(null); setAinsfw(null);
   };
 
   const installApp = () => {
@@ -299,14 +303,14 @@ function useMastheadAuth() {
     }
   };
 
-  return { mounted, username, firstName, photoUrl, isPremium, isAdmin, listings, ainsfw, isAppInstalled, installApp, logout };
+  return { mounted, username, firstName, photoUrl, isPremium, isAdmin, isPublisher, listings, ainsfw, isAppInstalled, installApp, logout };
 }
 
 type MastheadAuth = ReturnType<typeof useMastheadAuth>;
 
-function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: MastheadAuth; lp: (p: string) => string }) {
+function MastheadUserMenu({ accent, auth, lp, onNewListing }: { accent: string; auth: MastheadAuth; lp: (p: string) => string; onNewListing: () => void }) {
   const { t } = useTranslation();
-  const { mounted, username, firstName, photoUrl, isPremium, isAdmin, listings, ainsfw, logout } = auth;
+  const { mounted, username, firstName, photoUrl, isPremium, isAdmin, isPublisher, listings, ainsfw, logout } = auth;
   const displayName = firstName || username || '';
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -382,6 +386,12 @@ function MastheadUserMenu({ accent, auth, lp }: { accent: string; auth: Masthead
               <span className="flex-1">{t('nav.myAiNsfw', 'My AI NSFW')}</span>
               {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} {t('nav.inReview', 'in review')}</span>}
             </Link>
+          )}
+          {isPublisher && (
+            <button type="button" onClick={() => { setOpen(false); onNewListing(); }} className={`${item} w-full text-left`}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+              New listing
+            </button>
           )}
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)} className={item}>
@@ -507,9 +517,9 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
   );
 }
 
-function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: MastheadAuth; lp: (p: string) => string; onClose: () => void }) {
+function MobileUserMenu({ open, auth, lp, onClose, onNewListing }: { open: boolean; auth: MastheadAuth; lp: (p: string) => string; onClose: () => void; onNewListing: () => void }) {
   const { t } = useTranslation();
-  const { mounted, username, firstName, isPremium, isAdmin, listings, ainsfw, logout } = auth;
+  const { mounted, username, firstName, isPremium, isAdmin, isPublisher, listings, ainsfw, logout } = auth;
   const displayName = firstName || username || '';
   const campaignsLabel = listings?.hasPaidCampaign
     ? t('nav.myCampaigns', 'My Campaigns')
@@ -549,6 +559,12 @@ function MobileUserMenu({ open, auth, lp, onClose }: { open: boolean; auth: Mast
                 <span className="flex-1">{t('nav.myAiNsfw', 'My AI NSFW')}</span>
                 {!!ainsfw.inReviewCount && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">{ainsfw.inReviewCount} {t('nav.inReview', 'in review')}</span>}
               </Link>
+            )}
+            {isPublisher && (
+              <button type="button" onClick={() => { onClose(); onNewListing(); }} className={`${item} w-full text-left`}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+                New listing
+              </button>
             )}
             {isAdmin && (
               <Link href="/admin" onClick={onClose} className={item}>
@@ -628,6 +644,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
   const resolvedAccent = accent ?? accentForPath(pathname || '/');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [newListingOpen, setNewListingOpen] = useState(false);
 
   // Fixed pages already pad for the 58px nav row (pt-20/24/28). The live visitor
   // strip (+5px gap) sits below that and was never in those pads — reserve it here
@@ -694,7 +711,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
 
         <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
           <AddToolNav />
-          <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} />
+          <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} onNewListing={() => setNewListingOpen(true)} />
         </div>
 
         {/* Mobile + tablet — burger / avatar */}
@@ -739,8 +756,9 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
       <LiveVisitorBar />
 
       <MobileNavMenu open={mobileOpen} lp={lp} onClose={() => setMobileOpen(false)} />
-      <MobileUserMenu open={userOpen} auth={auth} lp={lp} onClose={() => setUserOpen(false)} />
+      <MobileUserMenu open={userOpen} auth={auth} lp={lp} onClose={() => setUserOpen(false)} onNewListing={() => setNewListingOpen(true)} />
     </header>
+      {newListingOpen ? <PublisherNewListing onClose={() => setNewListingOpen(false)} /> : null}
     {fixed ? (
       <div aria-hidden className="w-full shrink-0 pointer-events-none" style={{ height: FIXED_EXTRA_OFFSET }} />
     ) : (

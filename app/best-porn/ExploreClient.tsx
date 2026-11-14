@@ -9,7 +9,7 @@ import { EXPLORE_CATEGORIES, type ExploreCategory, type ExploreSite } from '@/li
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
 import { exploreSiteKey } from '@/lib/explore/siteKey';
-import { addExploreSite, loadExploreCategoriesForAdmin, removeExploreSite, saveExploreCategoryOrder, setExploreCategoryListed } from '@/lib/actions/exploreAdmin';
+import { addExploreSite, approveExploreDraft, listExploreDrafts, loadExploreCategoriesForAdmin, removeExploreSite, saveExploreCategoryOrder, setExploreCategoryListed } from '@/lib/actions/exploreAdmin';
 import { isExploreCategoryListed } from '@/lib/explore/applyExploreAdmin';
 import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
 import { exploreSiteOutboundRel } from '@/lib/explore/exploreOutboundRel';
@@ -122,6 +122,20 @@ function SiteFavicon({ site, large = false }: { site: ExploreSite; large?: boole
       }`}
       onError={() => setImageFailed(true)}
     />
+  );
+}
+
+function RowEditLink({ site }: { site: ExploreSite }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    setOn(localStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isPublisher') === 'true');
+  }, []);
+  if (!on || !isInternalExploreUrl(site.url)) return null;
+  const join = site.url.includes('?') ? '&' : '?';
+  return (
+    <Link href={`${site.url}${join}edit=1`} className="shrink-0 text-[9px] font-black uppercase tracking-wide text-[#c0392f] px-1">
+      Edit
+    </Link>
   );
 }
 
@@ -567,6 +581,7 @@ function CategoryCard({
                           </span>
                         ) : null}
                       </a>
+                      <RowEditLink site={site} />
                       {isAdmin ? (
                         <AdminMoveButtons
                           index={safeMoveIndex}
@@ -591,6 +606,7 @@ function CategoryCard({
                   <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
                   <SiteFavicon site={site} />
                   <SiteNameLink site={site} />
+                  <RowEditLink site={site} />
                   {isAdmin ? (
                     <AdminMoveButtons
                       index={safeMoveIndex}
@@ -638,7 +654,10 @@ export default function ExploreClient({
   categories?: ExploreCategory[];
   listedOverrides?: Record<string, boolean>;
 }) {
+  const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [drafts, setDrafts] = useState<{ categorySlug: string; siteKey: string; name: string }[]>([]);
+  const [approvingKey, setApprovingKey] = useState('');
   const [adminCategories, setAdminCategories] = useState<ExploreCategory[] | null>(null);
   const [adminListed, setAdminListed] = useState<Record<string, boolean> | null>(null);
   const sourceCategories = adminCategories || categories;
@@ -674,8 +693,12 @@ export default function ExploreClient({
           localStorage.setItem('isAdmin', 'true');
           return loadAdmin();
         }
+        if (data?.isPublisher) localStorage.setItem('isPublisher', 'true');
       })
       .catch(() => {});
+    if (localStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isPublisher') === 'true') {
+      listExploreDrafts(token).then(setDrafts).catch(() => {});
+    }
   }, []);
 
   return (
@@ -695,6 +718,40 @@ export default function ExploreClient({
       </div>
 
       <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-8 sm:pt-10 pb-16">
+        {drafts.length > 0 ? (
+          <div className="mb-6 rounded-xl border border-amber-400/40 bg-amber-950/40 px-4 py-3">
+            <p className="text-[11px] font-black uppercase tracking-wide text-amber-200 mb-2">Drafts waiting for approval</p>
+            <ul className="space-y-2">
+              {drafts.map((draft) => (
+                <li key={`${draft.categorySlug}-${draft.siteKey}`} className="flex items-center justify-between gap-3 text-sm text-white">
+                  <span className="truncate">{draft.name}</span>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      disabled={approvingKey === draft.siteKey}
+                      onClick={() => {
+                        const token = localStorage.getItem('token') || '';
+                        setApprovingKey(draft.siteKey);
+                        approveExploreDraft(token, draft.categorySlug, draft.siteKey)
+                          .then(() => {
+                            setDrafts((prev) => prev.filter((row) => row.siteKey !== draft.siteKey));
+                            router.refresh();
+                          })
+                          .catch(() => {})
+                          .finally(() => setApprovingKey(''));
+                      }}
+                      className="shrink-0 px-2 py-1 rounded bg-[#c0392f] text-[10px] font-black uppercase"
+                    >
+                      {approvingKey === draft.siteKey ? '...' : 'Approve'}
+                    </button>
+                  ) : (
+                    <span className="shrink-0 text-[10px] font-bold uppercase text-amber-200">Draft</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div className="text-center mb-8 sm:mb-10">
           <div className="explore-hero-title-row mb-3">
             <h1 className="explore-hero-title text-[28px] sm:text-[36px] md:text-[42px]">

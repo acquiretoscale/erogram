@@ -163,6 +163,10 @@ function ToolCardPreviewVideo({
 
 export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false, hubCta = false }: ToolCardProps) {
   const { t } = useTranslation();
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    setCanEdit(localStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isPublisher') === 'true');
+  }, []);
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const galleryImageAlt = (idx: number) => pickTagHashtagAlt(tool.tags, idx);
   const placeholder = '/assets/image.jpg';
@@ -346,6 +350,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
   const score = votes.up - votes.down;
   const badge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
   const btnCls = ainsfwCtaButtonClass('card');
+  const ctaLabel = tool.ctaText?.trim() || t('ainsfw.tryNow', 'TRY NOW →');
   const reviewAvg = ainsfwReviewAverage(reviews);
   const currentSrc = gallery[slideIdx] || mainImg;
 
@@ -523,7 +528,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 {/* CTA + bookmark */}
                 <div className="flex items-center gap-2">
                   <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
-                    {t('ainsfw.tryNow', 'TRY NOW →')}
+                    {ctaLabel}
                   </div>
                   <button
                     onClick={handleBookmark}
@@ -591,6 +596,14 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
             ref={cardRef}
             className={cardShell}
           >
+            {canEdit ? (
+              <Link
+                href={`/ainsfw/${tool.slug}?edit=1`}
+                className="absolute top-2 left-2 z-40 px-2 py-1 rounded-md bg-black/80 text-[10px] font-black uppercase tracking-wide text-white border border-white/20"
+              >
+                Edit
+              </Link>
+            ) : null}
             <Link href={`/ainsfw/${tool.slug}`} className="flex flex-col flex-grow min-h-0">
             <div
               className={imageShell}
@@ -659,7 +672,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               {!hubCta && (
               <div className="flex items-center gap-1.5">
                 <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
-                  {t('ainsfw.tryNow', 'TRY NOW →')}
+                  {ctaLabel}
                 </div>
                 <button
                   onClick={handleBookmark}
@@ -692,11 +705,11 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                     onClick={() => { void trackAinsfwToolClick(tool.slug); }}
                     className={`${btnCls} cursor-pointer flex-1 text-center`}
                   >
-                    {t('ainsfw.tryNow', 'TRY NOW →')}
+                    {ctaLabel}
                   </a>
                 ) : (
                   <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
-                    {t('ainsfw.tryNow', 'TRY NOW →')}
+                    {ctaLabel}
                   </div>
                 )}
                 <Link href={`/ainsfw/${tool.slug}`} className="shrink-0 px-1.5 h-7 inline-flex items-center rounded border border-gray-300 text-[8px] font-bold uppercase tracking-tight text-gray-500 leading-none">

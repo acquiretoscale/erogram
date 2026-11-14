@@ -1366,6 +1366,26 @@ if (!AINsfwToolStats.schema.path('tryNowUrlOverride')) {
 if (!AINsfwToolStats.schema.path('previewVideoUrl')) {
   AINsfwToolStats.schema.add({ previewVideoUrl: { type: String, default: '' } });
 }
+if (!AINsfwToolStats.schema.path('ctaText')) {
+  AINsfwToolStats.schema.add({ ctaText: { type: String, default: '' } });
+}
+if (!AINsfwToolStats.schema.path('categoriesOverride')) {
+  AINsfwToolStats.schema.add({ categoriesOverride: { type: [String], default: [] } });
+}
+if (!AINsfwToolStats.schema.path('featuredDuration')) {
+  AINsfwToolStats.schema.add({ featuredDuration: { type: String, default: '' } });
+}
+if (!AINsfwToolStats.schema.path('featuredExpiresAt')) {
+  AINsfwToolStats.schema.add({ featuredExpiresAt: { type: Date, default: null } });
+}
+if (!AINsfwToolStats.schema.path('editorialReview')) {
+  AINsfwToolStats.schema.add({
+    editorialReview: {
+      shortDescription: { type: String, default: '' },
+      featureHighlights: [{ title: { type: String, default: '' }, body: { type: String, default: '' } }],
+    },
+  });
+}
 
 // AI NSFW Submission — user-submitted AI tools for listing
 const ainsfwSubmissionSchema = new Schema(
@@ -1422,6 +1442,9 @@ if (!AINsfwSubmission.schema.path('paidAt')) {
 }
 if (!AINsfwSubmission.schema.path('awaitingAdminReview')) {
   AINsfwSubmission.schema.add({ awaitingAdminReview: { type: Boolean, default: false } });
+}
+if (!AINsfwSubmission.schema.path('featuredDuration')) {
+  AINsfwSubmission.schema.add({ featuredDuration: { type: String, default: '' } });
 }
 
 // Bot Stats — votes (per-bot aggregate, mirrors AINsfwToolStats)

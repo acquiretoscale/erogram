@@ -77,6 +77,7 @@ export default function LoginClient({
     token: string;
     username: string;
     isAdmin: boolean | string;
+    isPublisher?: boolean;
     firstName?: string | null;
     photoUrl?: string | null;
     isNewUser?: boolean;
@@ -84,6 +85,8 @@ export default function LoginClient({
     localStorage.setItem('token', data.token);
     localStorage.setItem('username', data.username);
     localStorage.setItem('isAdmin', String(data.isAdmin));
+    if (data.isPublisher) localStorage.setItem('isPublisher', 'true');
+    else localStorage.removeItem('isPublisher');
     if (data.firstName) localStorage.setItem('firstName', data.firstName);
     else localStorage.removeItem('firstName');
     if (data.photoUrl) localStorage.setItem('photoUrl', data.photoUrl);
@@ -94,6 +97,7 @@ export default function LoginClient({
     const rd = normalizeRedirect(redirectParam || redirectTo);
 
     if (data.isAdmin === 'true' || data.isAdmin === true) router.push('/admin');
+    else if (data.isPublisher && !redirectParam) router.push('/ainsfw');
     else if (redirectParam && rd.startsWith('/')) router.push(rd);
     else if (data.isNewUser) router.push('/profile');
     else router.push(rd);

@@ -174,23 +174,28 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       getApprovedSubmissions(),
       getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     ]);
+    const placementSlugs = [...AI_NSFW_TOOLS, ...allPaidSubmissions].map((t) => t.slug);
+    const placementStats = await getAllToolStats(placementSlugs);
+    const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
+    const catalogForCategory = AI_NSFW_TOOLS.map((t) => mergeToolContent(t, placementStats[t.slug]));
+    const paidForCategory = allPaidSubmissions.map((t) => mergeToolContent(t, placementStats[t.slug]));
     const tools = mergeCategoryPageTools(
       category,
-      getToolsByCategory(category),
-      allPaidSubmissions,
-      AI_NSFW_TOOLS,
+      [],
+      paidForCategory,
+      catalogForCategory,
     );
-    const allStats = await getAllToolStats(tools.map((t) => t.slug));
+    const allStats = placementStats;
     const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
     const catalogToolsBySlug = new Map([
-      ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
-      ...paidSubmissions.map((t) => [t.slug, t] as const),
+      ...catalogForCategory.map((t) => [t.slug, t] as const),
+      ...paidForCategory.filter((t) => !staticSlugs.has(t.slug)).map((t) => [t.slug, t] as const),
     ]);
     const featuredHubSlugs = await resolveFeaturedHubSlugs();
     const recentTools = pickRecentCategoryTools(
       category,
       catalogToolsBySlug,
-      allPaidSubmissions as Array<(typeof allPaidSubmissions)[number] & { createdAt?: string }>,
+      paidForCategory as Array<(typeof paidForCategory)[number] & { createdAt?: string }>,
       RECENT_POOL_LIMIT,
       featuredHubSlugs,
     );
@@ -240,15 +245,10 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
   const paidSubmissions = await getApprovedSubmissions(staticSlugs);
 
-  const fullReview = getFullReview(aiTool.slug);
+  const fileReview = getFullReview(aiTool.slug);
   const isPaidClientListing = isPaidClientTool(aiTool.slug) || !!submissionTool;
   const showVerified = isPaidClientListing;
-  const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
   const listingBlocksRaw = getListingBlocks(aiTool.slug);
-  const showListingBlocks = !!listingBlocksRaw && (
-    !!fullReview || isPaidClientTool(aiTool.slug) || !!submissionTool
-  );
-  const listingBlocks = showListingBlocks ? listingBlocksRaw : undefined;
 
   const [toolStats, aiArticles, topAdCampaigns] = await Promise.all([
     getToolStats(aiTool.slug),
@@ -266,6 +266,24 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     .filter(Boolean) as AINsfwTool[];
   const featuredHubStats = await getAllToolStats(featuredHubSlugs);
   const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+
+  const savedIntro = toolStats.editorialReview?.shortDescription?.trim() || '';
+  const savedHighlights = (toolStats.editorialReview?.featureHighlights || [])
+    .filter((h) => h.title?.trim() && h.body?.trim())
+    .map((h) => ({ title: h.title.trim(), body: h.body.trim() }));
+  const fullReview = savedIntro || savedHighlights.length
+    ? {
+        shortDescription: savedIntro,
+        featureHighlights: savedHighlights,
+        sections: savedIntro ? [{ heading: '', body: savedIntro }] : [],
+        alternatives: fileReview?.alternatives,
+      }
+    : fileReview;
+  const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
+  const showListingBlocks = !!listingBlocksRaw && (
+    !!fullReview || isPaidClientTool(aiTool.slug) || !!submissionTool
+  );
+  const listingBlocks = showListingBlocks ? listingBlocksRaw : undefined;
 
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const mergedTool = mergeToolContent(aiTool, toolStats);

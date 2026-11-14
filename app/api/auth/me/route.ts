@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db/mongodb';
 import { User } from '@/lib/models';
+import { isPublisherToken } from '@/lib/auth/publisherAccess';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -18,6 +19,14 @@ export async function GET(req: NextRequest) {
     }
     
     const token = authHeader.substring(7);
+    if (isPublisherToken(token)) {
+      return NextResponse.json({
+        username: 'Demopublisher',
+        isAdmin: false,
+        isPublisher: true,
+        premium: false,
+      });
+    }
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     
     const user = await User.findById(decoded.id).select('-password');

@@ -72,6 +72,18 @@ function docToStats(doc: any, admin = false): ToolStatsData {
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
     coverManaged: !!doc.coverManaged,
     previewVideoUrl: doc.previewVideoUrl || '',
+    ctaText: doc.ctaText || '',
+    categoriesOverride: Array.isArray(doc.categoriesOverride) ? doc.categoriesOverride : [],
+    featuredDuration: doc.featuredDuration || '',
+    featuredExpiresAt: doc.featuredExpiresAt ? new Date(doc.featuredExpiresAt).toISOString() : '',
+    editorialReview: doc.editorialReview
+      ? {
+          shortDescription: doc.editorialReview.shortDescription || '',
+          featureHighlights: Array.isArray(doc.editorialReview.featureHighlights)
+            ? doc.editorialReview.featureHighlights.map((h: any) => ({ title: h.title || '', body: h.body || '' }))
+            : [],
+        }
+      : undefined,
     reviews: filtered.map((r: any) => mapReview(r, admin)),
   };
 }
@@ -89,6 +101,11 @@ export interface ToolStatsData {
   galleryManaged?: boolean;
   coverManaged?: boolean;
   previewVideoUrl?: string;
+  ctaText?: string;
+  categoriesOverride?: string[];
+  featuredDuration?: string;
+  featuredExpiresAt?: string;
+  editorialReview?: { shortDescription?: string; featureHighlights?: { title: string; body: string }[] };
   reviews: ToolReviewData[];
 }
 
@@ -295,16 +312,26 @@ async function expireAinsfwBoostFeatured() {
     { featured: true, featuredExpiresAt: { $ne: null, $lte: now } },
     { slug: 1 },
   ).lean() as any[];
-  if (!expired.length) return;
 
   const slugs = expired.map((d) => d.slug);
   await AINsfwSubmission.updateMany(
     { slug: { $in: slugs } },
-    { $set: { featured: false, boosted: false, boostExpiresAt: null } },
+    { $set: { featured: false, boosted: false, boostExpiresAt: null, featuredExpiresAt: null } },
   );
 
+  const expiredStats = await AINsfwToolStats.find(
+    { featured: true, featuredDuration: { $in: ['7', '14', '30'] }, featuredExpiresAt: { $ne: null, $lte: now } },
+    { slug: 1 },
+  ).lean() as any[];
+  for (const row of expiredStats) {
+    if (!slugs.includes(row.slug)) slugs.push(row.slug);
+  }
+
   const statsDocs = await AINsfwToolStats.find({ slug: { $in: slugs } }, { slug: 1, campaignId: 1 }).lean() as any[];
-  await AINsfwToolStats.updateMany({ slug: { $in: slugs } }, { $set: { featured: false } });
+  await AINsfwToolStats.updateMany(
+    { slug: { $in: slugs } },
+    { $set: { featured: false, featuredDuration: '', featuredExpiresAt: null } },
+  );
   for (const d of statsDocs) {
     if (d.campaignId) {
       await Campaign.findByIdAndUpdate(d.campaignId, { $set: { status: 'paused', isVisible: false } });
@@ -373,10 +400,28 @@ export interface FeaturedToolInfo {
 export async function getBoostFeaturedSlugs(): Promise<string[]> {
   await connectDB();
   await expireAinsfwBoostFeatured();
-  const docs = await AINsfwSubmission.find(activeBoostFeaturedFilter(), { slug: 1 })
-    .sort({ featuredExpiresAt: 1, createdAt: -1 })
-    .lean() as any[];
-  return docs.map((d) => d.slug);
+  const now = new Date();
+  const [docs, statsDocs] = await Promise.all([
+    AINsfwSubmission.find(activeBoostFeaturedFilter(), { slug: 1 })
+      .sort({ featuredExpiresAt: 1, createdAt: -1 })
+      .lean() as Promise<any[]>,
+    AINsfwToolStats.find(
+      {
+        featured: true,
+        featuredDuration: { $in: ['7', '14', '30', 'lifetime'] },
+        $or: [{ featuredExpiresAt: null }, { featuredExpiresAt: { $gt: now } }],
+      },
+      { slug: 1 },
+    ).lean() as Promise<any[]>,
+  ]);
+  const slugs: string[] = [];
+  const seen = new Set<string>();
+  for (const d of [...docs, ...statsDocs]) {
+    if (!d.slug || seen.has(d.slug)) continue;
+    seen.add(d.slug);
+    slugs.push(d.slug);
+  }
+  return slugs;
 }
 
 export async function getFeaturedSlugs(): Promise<string[]> {
@@ -561,6 +606,16 @@ export async function adminApprovePaidAinsfwListing(id: string): Promise<AdminSu
   if (!doc) return null;
   if (doc.featured) {
     await adminSetFeatured(doc.slug, true);
+    await AINsfwToolStats.updateOne(
+      { slug: doc.slug },
+      {
+        $set: {
+          featured: true,
+          featuredDuration: doc.featuredDuration || 'lifetime',
+          featuredExpiresAt: doc.featuredExpiresAt || null,
+        },
+      },
+    );
   }
   const plan = doc.submissionTier || 'basic';
   const hadPaidBefore =

@@ -6,6 +6,7 @@ import connectDB from '@/lib/db/mongodb';
 import { ExploreCategoryOrder, ExploreSiteOverride, User } from '@/lib/models';
 import { getExploreSiteListing, getExploreSiteListingByRootSlug, exploreListingRootSlug, exploreSiteListingPath } from '@/lib/explore/exploreSiteListings';
 import { customRowToListing, slugifyExploreSiteKey } from '@/lib/explore/exploreCustomSites';
+import { isPublisherToken } from '@/lib/auth/publisherAccess';
 import type { ExploreSiteListing } from '@/lib/explore/exploreSiteListings';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
@@ -179,7 +180,7 @@ export async function updateExploreSiteListing(
   },
 ) {
   const admin = await authenticateAdmin(token);
-  if (!admin) throw new Error('Unauthorized');
+  if (!admin && !isPublisherToken(token)) throw new Error('Unauthorized');
 
   await connectDB();
   await ExploreSiteOverride.findOneAndUpdate(
@@ -313,6 +314,39 @@ export async function removeExploreSite(
 
   await removeSiteKeyFromOrder(categorySlug, siteKey);
 
+  revalidatePath('/best-porn');
+  revalidatePath(`/best-porn/${siteKey}`);
+  revalidatePath(exploreSiteListingPath(siteKey, categorySlug));
+  return { ok: true };
+}
+
+export async function listExploreDrafts(token: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin && !isPublisherToken(token)) return [];
+  await connectDB();
+  const rows = await ExploreSiteOverride.find({ isCustom: true, hidden: true })
+    .select('categorySlug siteKey name externalUrl')
+    .sort({ createdAt: -1 })
+    .lean();
+  return rows.map((row) => ({
+    categorySlug: String(row.categorySlug),
+    siteKey: String(row.siteKey),
+    name: String(row.name || row.siteKey),
+    externalUrl: String(row.externalUrl || ''),
+  }));
+}
+
+export async function approveExploreDraft(token: string, categorySlug: string, siteKey: string) {
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+  await connectDB();
+  const row = await ExploreSiteOverride.findOneAndUpdate(
+    { categorySlug, siteKey, isCustom: true, hidden: true },
+    { $set: { hidden: false } },
+    { new: true },
+  );
+  if (!row) throw new Error('Draft not found');
+  await appendSiteKeyToOrder(categorySlug, siteKey);
   revalidatePath('/best-porn');
   revalidatePath(`/best-porn/${siteKey}`);
   revalidatePath(exploreSiteListingPath(siteKey, categorySlug));

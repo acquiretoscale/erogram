@@ -1,5 +1,12 @@
 import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 
+export type EditorialHighlight = { title: string; body: string };
+
+export type EditorialReviewFields = {
+  shortDescription?: string;
+  featureHighlights?: EditorialHighlight[];
+};
+
 export type ToolContentFields = {
   descriptionOverride?: string;
   imageOverride?: string;
@@ -8,6 +15,9 @@ export type ToolContentFields = {
   hiddenGalleryUrls?: string[];
   galleryManaged?: boolean;
   coverManaged?: boolean;
+  ctaText?: string;
+  categoriesOverride?: string[];
+  editorialReview?: EditorialReviewFields;
 };
 
 export function resolveGallery(slug: string, content?: ToolContentFields | null): string[] {
@@ -34,16 +44,21 @@ export function contentFromStats(doc?: ToolContentFields | null): ToolContentFie
     hiddenGalleryUrls: doc.hiddenGalleryUrls || [],
     galleryManaged: !!doc.galleryManaged || (doc.hiddenGalleryUrls?.length ?? 0) > 0 || (doc.customGallery?.length ?? 0) > 0,
     coverManaged: !!doc.coverManaged,
+    ctaText: doc.ctaText || '',
+    categoriesOverride: doc.categoriesOverride || [],
+    editorialReview: doc.editorialReview,
   };
 }
 
-export function mergeToolContent<T extends { description: string; image: string; tryNowUrl?: string }>(
+export function mergeToolContent<T extends { description: string; image: string; tryNowUrl?: string; category?: string; categories?: string[] }>(
   tool: T,
   content?: ToolContentFields | null,
 ): T {
   if (!content) return tool;
   const description = content.descriptionOverride?.trim();
   const tryNowUrl = content.tryNowUrlOverride?.trim();
+  const ctaText = content.ctaText?.trim();
+  const categories = (content.categoriesOverride || []).map((c) => c.trim()).filter(Boolean).slice(0, 6);
   let image: string | undefined;
   if (content.coverManaged) {
     image = content.imageOverride?.trim() || '/assets/image.jpg';
@@ -55,5 +70,7 @@ export function mergeToolContent<T extends { description: string; image: string;
     ...(description ? { description } : {}),
     ...(image !== undefined ? { image } : {}),
     ...(tryNowUrl ? { tryNowUrl } : {}),
+    ...(ctaText ? { ctaText } : {}),
+    ...(categories.length ? { categories, category: categories[0] } : {}),
   };
 }
