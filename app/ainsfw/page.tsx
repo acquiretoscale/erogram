@@ -13,6 +13,7 @@ import { getAuthorBySlug } from '@/lib/actions/authors';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getVerifiedSlugs } from '@/app/ainsfw/fullReviews';
 import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
+import { getPopulatedHubCategories } from '@/lib/ainsfw/categoryListings';
 
 const BASE_URL = CANONICAL_BASE;
 
@@ -62,19 +63,34 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
     getAuthorBySlug('eros'),
   ]);
   const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
-  const allTools = [...AI_NSFW_TOOLS, ...paidSubmissions];
+  const paidBySlug = new Map(allPaidSubmissions.map((p) => [p.slug, p]));
+  const catalogWithPlacements = AI_NSFW_TOOLS.map((t) => {
+    const p = paidBySlug.get(t.slug);
+    if (!p) return t;
+    return {
+      ...t,
+      categories: p.categories?.length ? p.categories : t.categories,
+      tags: p.tags?.length ? p.tags : t.tags,
+    };
+  });
+  const allTools = [...catalogWithPlacements, ...paidSubmissions];
   const paginationTotalPages = Math.max(1, Math.ceil(allTools.length / AINSFW_PAGE_SIZE));
   if (currentPage > paginationTotalPages) notFound();
   const allStats = await getAllToolStats([...new Set([...allTools, ...allPaidSubmissions].map((t) => t.slug))]);
   const { mergeToolContent } = await import('@/lib/ainsfw/toolContent');
   const displayTools = allTools.map((t) => mergeToolContent(t, allStats[t.slug]));
   const toolsBySlug = new Map([...allTools, ...allPaidSubmissions].map((t) => [t.slug, t]));
-  const recentTools = currentPage === 1
-    ? pickRecentTools(toolsBySlug, allPaidSubmissions as Array<(typeof allPaidSubmissions)[number] & { createdAt?: string }>)
-        .map((t) => mergeToolContent(t, allStats[t.slug]))
-    : [];
   const featuredSlugs = featuredInfos.map(f => f.slug);
   const featuredHubSlugs = await resolveFeaturedHubSlugs();
+  const recentTools = currentPage === 1
+    ? pickRecentTools(
+        toolsBySlug,
+        allPaidSubmissions as Array<(typeof allPaidSubmissions)[number] & { createdAt?: string }>,
+        { excludeSlugs: featuredHubSlugs },
+      )
+        .map((t) => mergeToolContent(t, allStats[t.slug]))
+    : [];
+  const categoryOptions = getPopulatedHubCategories(catalogWithPlacements, allPaidSubmissions);
   const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
@@ -142,7 +158,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
           <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
         ))}
       </nav>
-      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} featuredHubSlugs={featuredHubSlugs} />
+      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} featuredHubSlugs={featuredHubSlugs} categoryOptions={categoryOptions} />
     </>
   );
 }

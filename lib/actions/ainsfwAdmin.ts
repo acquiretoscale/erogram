@@ -266,19 +266,8 @@ export async function getPublicToolGallery(slug: string): Promise<string[]> {
 
 export async function adminSetFeaturedHubSlugs(
   token: string,
-  slugs: string[],
+  _slugs: string[],
 ): Promise<{ slugs: string[] }> {
   await requireAdmin(token);
-  const { normalizeFeaturedHubSlugs } = await import('@/lib/ainsfw/featuredHub');
-  const { SiteConfig } = await import('@/lib/models');
-  const next = normalizeFeaturedHubSlugs(slugs);
-  if (next.length !== 2 && next.length !== 4) {
-    throw new Error('Pick 2 or 4 tools');
-  }
-  await SiteConfig.findOneAndUpdate(
-    {},
-    { $set: { 'generalSettings.ainsfwFeaturedHubSlugs': next } },
-    { upsert: true },
-  );
-  return { slugs: next };
+  throw new Error('The featured row follows paid bookings. Set featured and the number of days on the listing.');
 }

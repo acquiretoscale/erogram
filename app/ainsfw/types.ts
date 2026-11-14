@@ -14,6 +14,7 @@ export type AINsfwToolCategory =
   | 'AI Image Generator'
   | 'AI Art Generator'
   | 'AI NSFW Image Generator'
+  | 'AI Nude Generator'
   | 'AI Porn Generator'
   | 'AI Face Swap'
   | 'AI Video Generator'
@@ -38,6 +39,9 @@ export interface AINsfwTool {
   payment: string[];
   tryNowUrl: string;
   sourceUrl: string;
+  /** Paid listing placements (up to plan limit); falls back to `category` when empty. */
+  categories?: string[];
+  submissionTier?: string;
 }
 
 export type AINsfwCategory = 'All' | AINsfwToolCategory;
@@ -59,6 +63,7 @@ export const AINSFW_CATEGORIES: AINsfwCategory[] = [
   'AI Image Generator',
   'AI Art Generator',
   'AI NSFW Image Generator',
+  'AI Nude Generator',
   'AI Porn Generator',
   'AI Face Swap',
   'AI Video Generator',

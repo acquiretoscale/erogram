@@ -4,6 +4,7 @@ import {
   getVerifiedPaidSlugs,
 } from '@/app/ainsfw/fullReviews';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
+import { toolMatchesCategory } from '@/lib/ainsfw/categoryListings';
 
 export type SuggestedAlternative = {
   tool: AINsfwTool;
@@ -23,7 +24,7 @@ export function pickSuggestedAlternatives(
     clientSlugs.add(slug);
   }
   for (const t of paidInCategory) {
-    if (t.category === category) clientSlugs.add(t.slug);
+    if (toolMatchesCategory(t, category)) clientSlugs.add(t.slug);
   }
   clientSlugs.delete(currentSlug);
 
@@ -32,7 +33,7 @@ export function pickSuggestedAlternatives(
     if (t.slug !== currentSlug) bySlug.set(t.slug, t);
   }
   for (const t of paidInCategory) {
-    if (t.slug !== currentSlug && t.category === category) bySlug.set(t.slug, t);
+    if (t.slug !== currentSlug && toolMatchesCategory(t, category)) bySlug.set(t.slug, t);
   }
 
   const sortByUpvotes = (list: AINsfwTool[]) =>

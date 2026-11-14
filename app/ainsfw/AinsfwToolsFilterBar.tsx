@@ -5,6 +5,8 @@ import type { AINsfwCategory, AinsfwSortOption, PaymentOption, PricingModel } fr
 import { AINSFW_CATEGORIES, AINSFW_SORT_OPTIONS, ALL_PAYMENT_OPTIONS, PRICING_MODEL_OPTIONS } from './types';
 
 interface AinsfwToolsFilterBarProps {
+  /** Only categories with at least one listing (no empty traps in the dropdown). */
+  categoryOptions?: AINsfwCategory[];
   activeCategory: AINsfwCategory;
   activePricing: PricingModel;
   activePayment: PaymentOption | 'All';
@@ -26,6 +28,7 @@ const pillIdle = 'bg-[#04140c]/80 text-white/70 border-[#22c55e]/25 hover:border
 const pillActive = 'bg-[#22c55e] text-black border-[#22c55e]';
 
 export default function AinsfwToolsFilterBar({
+  categoryOptions = AINSFW_CATEGORIES,
   activeCategory,
   activePricing,
   activePayment,
@@ -69,7 +72,7 @@ export default function AinsfwToolsFilterBar({
             aria-label="Category"
             className={`${selectCls} max-w-[9.5rem] sm:max-w-[11rem]`}
           >
-            {AINSFW_CATEGORIES.map((cat) => (
+            {categoryOptions.map((cat) => (
               <option key={cat} value={cat} className="bg-[#0a1f12]">
                 {cat === 'All' ? t('ainsfw.allCategories', 'All categories') : catLabel(cat)}
               </option>

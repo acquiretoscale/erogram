@@ -87,9 +87,16 @@ const GUIDE_LINK_CLASS = 'text-[#22c55e] hover:underline';
 const TOOL_BY_NAME = new Map(AI_NSFW_TOOLS.map((tool) => [tool.name.toLowerCase(), tool]));
 
 const TAG_EXACT: Record<string, string> = {
-  'ai girlfriend': AINSFW('AI Companion'),
+  'ai girlfriend': AINSFW('AI Girlfriend'),
   'ai companion': AINSFW('AI Companion'),
+  'ai nude generator': AINSFW('AI Nude Generator'),
+  'nude generator': AINSFW('AI Nude Generator'),
+  'ai nude': AINSFW('AI Nude Generator'),
   'ai sexting': AINSFW('AI Sexting / Chat'),
+  'sexting ai': AINSFW('AI Sexting / Chat'),
+  'ai nsfw chat': AINSFW('AI NSFW Chat'),
+  'ai chat': AINSFW('AI NSFW Chat'),
+  'ai virtual girlfriend': AINSFW('AI Girlfriend'),
   'ai boyfriend': AINSFW('AI Companion'),
   'ai chat': AINSFW('AI Sexting / Chat'),
   'ai chatbot': AINSFW('AI Sexting / Chat'),
@@ -130,7 +137,8 @@ export function getAinsfwTagHref(tag: string): string | null {
 
   if (/undress|nudif|deepfake|clothes remover|clothes changer|nudifier/.test(key)) return AINSFW('Undress AI');
   if (/porn generator|generated porn|ai porn/.test(key)) return AINSFW('AI Porn Generator');
-  if (/girlfriend|companion|sexting|boyfriend|waifu/.test(key)) return AINSFW('AI Companion');
+  if (/girlfriend|virtual girlfriend|waifu/.test(key)) return AINSFW('AI Girlfriend');
+  if (/companion|sexting|boyfriend/.test(key)) return AINSFW('AI Companion');
   if (/roleplay|role play/.test(key)) return AINSFW('AI NSFW Roleplay');
   if (/chatbot|\bchat\b/.test(key)) return AINSFW('AI Sexting / Chat');
   if (/face swap|image generator|image gen|text-to-image|sdxl|faceswap/.test(key)) return AINSFW('AI NSFW Image Generator');

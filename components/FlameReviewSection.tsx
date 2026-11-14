@@ -137,6 +137,7 @@ export default function FlameReviewSection({
   const reviewAvg = reviewCount > 0
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
     : 0;
+  const writtenReviews = reviews.filter((r) => (r.text || '').trim().length > 0);
 
   const [reviewForm, setReviewForm] = useState({ rating: 0, content: '' });
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -231,9 +232,9 @@ export default function FlameReviewSection({
         </div>
       )}
 
-      {reviews.length > 0 && (
+      {writtenReviews.length > 0 && (
         <div className="px-4 sm:px-5 pb-4 space-y-3">
-          {reviews.map((r, i) => (
+          {writtenReviews.map((r, i) => (
             <div key={`${r.authorName}-${r.createdAt}-${i}`} className="rounded-xl px-4 py-4 sm:px-5 sm:py-4 bg-white shadow-sm">
               <div className="flex gap-3 items-start">
                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full shrink-0 overflow-hidden bg-gradient-to-br from-[#ff6b00] to-[#ff3d00] flex items-center justify-center text-white text-base font-black">

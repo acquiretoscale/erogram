@@ -33,6 +33,7 @@ const CATEGORY_DESC: Record<string, string> = {
   'AI Sexting / Chat': 'The best AI sexting and chat platforms for uncensored roleplay and adult conversations.',
   'AI NSFW Image Generator': 'Best AI NSFW image generators for adult content creation.',
   'AI Porn Generator': 'AI porn generators that turn prompts into custom adult images and video.',
+  'AI Nude Generator': 'AI nude generators — photo-to-nude, face swap, and explicit stills reviewed on Erogram.',
   'AI NSFW Roleplay': 'Top AI NSFW roleplay platforms for immersive adult storytelling and character interaction.',
   'Adult Games': 'Adult games and interactive 3D experiences, reviewed and listed separately from AI tools.',
 };

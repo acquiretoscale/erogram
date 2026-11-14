@@ -600,15 +600,22 @@ function mapPaidSubmission(d: any): AINsfwTool & { createdAt?: string } {
     slug: d.slug || toolSlug(d.category, d.name),
     name: d.name,
     category: d.category,
+    categories:
+      Array.isArray(d.categories) && d.categories.length > 0
+        ? d.categories
+        : d.category
+          ? [d.category]
+          : [],
     vendor: d.vendor || d.name,
     description: d.description,
     image: d.image || '/assets/image.jpg',
-    tags: d.tags || [],
+    tags: Array.isArray(d.tags) ? d.tags : [],
     subscription: d.subscription || '',
     payment: d.payment || [],
     tryNowUrl: d.tryNowUrl || d.websiteUrl,
     sourceUrl: d.websiteUrl,
     createdAt: at ? new Date(at).toISOString() : undefined,
+    submissionTier: d.submissionTier,
   };
 }
 
@@ -616,7 +623,7 @@ export async function getApprovedSubmissions(existingSlugs?: Set<string>): Promi
   await connectDB();
   const docs = await AINsfwSubmission.find(
     { status: 'approved', paymentStatus: 'paid', unlisted: { $ne: true } },
-    { slug: 1, name: 1, category: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1, createdAt: 1, paidAt: 1 },
+    { slug: 1, name: 1, category: 1, categories: 1, submissionTier: 1, vendor: 1, description: 1, image: 1, tags: 1, subscription: 1, payment: 1, tryNowUrl: 1, websiteUrl: 1, createdAt: 1, paidAt: 1 },
   ).lean() as any[];
 
   return docs

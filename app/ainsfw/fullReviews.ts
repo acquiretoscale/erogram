@@ -330,27 +330,27 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
   },
   "ai-peep-ai-nsfw-chat": {
     shortDescription:
-      "AI Peep (aipeeps.com) is one of the most approachable free NSFW AI chat destinations on the web: pick a Peep, start talking, and sign up only when you want saves, coins, and extras. The site bundles uncensored AI chat, in-thread images, video, and voice in one place, so it fits anyone comparing AI NSFW tools, AI girlfriend apps, and AI character platforms without jumping between tabs.",
+      "AI Peeps (aipeeps.com) is one of the most approachable free NSFW AI chat destinations on the web: pick a Peep, start talking, and sign up only when you want saves, coins, and extras. The site bundles uncensored AI chat, in-thread images, video, and voice in one place, so it fits anyone comparing AI NSFW tools, AI girlfriend apps, and AI character platforms without jumping between tabs.",
     featureHighlights: [
       {
-        title: "AI Peep as a Free NSFW AI Chat You Can Try in Seconds",
+        title: "AI Peeps as a Free NSFW AI Chat You Can Try in Seconds",
         body: "You can open a character and chat without an account, which is rare in this niche. After 18+ confirmation, the NSFW side unlocks alongside SFW browsing. A free login via Google, X, Apple, or email brings daily free messages, stored chats, PeepCoins, and pictures your Peep can send during conversation. If your search is AI sexting, AI roleplay, or a natural AI companion that keeps scene context, this front door is built for that intent.",
       },
       {
-        title: "AI Peep as an Uncensored AI Character and Roleplay Hub",
-        body: "The catalog is built around AI characters: personalities, scenes, galleries, and story hooks that read like mini profiles rather than generic bots. You can create your own Peep, lean on long-term memory, and grow arcs over time. AI Peep positions itself as uncensored for adults while banning minors and real-person abuse in policy. Styles span photorealistic, anime, cartoon, painted, and 3D, so traffic from AI NSFW character and AI girlfriend searches still finds relevant depth.",
+        title: "AI Peeps as an Uncensored AI Character and Roleplay Hub",
+        body: "The catalog is built around AI characters: personalities, scenes, galleries, and story hooks that read like mini profiles rather than generic bots. You can create your own Peep, lean on long-term memory, and grow arcs over time. AI Peeps positions itself as uncensored for adults while banning minors and real-person abuse in policy. Styles span photorealistic, anime, cartoon, painted, and 3D, so traffic from AI NSFW character and AI girlfriend searches still finds relevant depth.",
       },
       {
-        title: "AI Peep as an AI NSFW Image Generator and Video Studio",
+        title: "AI Peeps as an AI NSFW Image Generator and Video Studio",
         body: "Chat is the hook, but media is a full lane. PeepCoins power image creation and editing in the studio: outfit, pose, background, or quick Advanced Peep builds from a short brief. Site updates highlight mixing two looks in one image and community bounties with PeepCoin rewards. Still images can move toward AI video generation when you animate a photo into a short clip, which serves visitors who arrived looking for AI NSFW image generator or AI video tools, not only text.",
       },
       {
-        title: "AI Peep as an AI Companion with Voice, Memory, and Daily Use",
+        title: "AI Peeps as an AI Companion with Voice, Memory, and Daily Use",
         body: "Voice and immersive chat sit next to text, and the product FAQ stresses fair pricing and convincing quality on images and video. New Peeps refresh on a weekly rhythm, so the hub stays lively for return visits. Paid tiers expand unlimited text and monthly coin allowances for heavier image and video use, while the free tier stays honest for first tests.",
       },
       {
-        title: "AI Peep as a Leading AI NSFW Chat and AI Girlfriend Alternative",
-        body: "On Erogram, AI Peep belongs with the best AI NSFW chat, AI characters, uncensored AI chat, and AI roleplay listings, with a clear path for NSFW AI images and AI video when you are ready to spend coins. It is a good AI tool for adults who want personality first and a studio second, without paying before the first message. Visit aipeeps.com to try chat free, then grow into images, video, and voice at your own pace.",
+        title: "AI Peeps as a Leading AI NSFW Chat and AI Girlfriend Alternative",
+        body: "On Erogram, AI Peeps belongs with the best AI NSFW chat, AI characters, uncensored AI chat, and AI roleplay listings, with a clear path for NSFW AI images and AI video when you are ready to spend coins. It is a good AI tool for adults who want personality first and a studio second, without paying before the first message. Visit aipeeps.com to try chat free, then grow into images, video, and voice at your own pace.",
       },
     ],
     sections: [],

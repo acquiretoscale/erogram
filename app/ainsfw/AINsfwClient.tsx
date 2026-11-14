@@ -21,6 +21,7 @@ import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
 import { categoryToSlug } from './data';
+import { toolMatchesCategory } from '@/lib/ainsfw/categoryListings';
 import type { AINsfwToolCategory } from './types';
 
 const HERO_CATEGORY_LINKS: AINsfwToolCategory[] = [
@@ -50,6 +51,8 @@ interface AINsfwClientProps {
   recentTools?: AINsfwTool[];
   verifiedSlugs?: string[];
   featuredHubSlugs?: string[];
+  /** Categories that have at least one tool (dropdown excludes empty hubs). */
+  categoryOptions?: AINsfwCategory[];
 }
 
 function GuideEditorNote({ author }: { author: AuthorProfile }) {
@@ -101,7 +104,7 @@ function getUpvotes(slug: string, allStats?: Record<string, ToolStatsData>): num
   return allStats?.[slug]?.upvotes ?? 0;
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [] }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [], categoryOptions }: AINsfwClientProps) {
   const verifiedSet = new Set(verifiedSlugs);
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePricing, setActivePricing] = useState<PricingModel>('All');
@@ -137,6 +140,16 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
     setScores(loadAllScores(allStats));
   }, [allStats]);
 
+  useEffect(() => {
+    if (
+      categoryOptions &&
+      activeCategory !== 'All' &&
+      !categoryOptions.includes(activeCategory)
+    ) {
+      setActiveCategory('All');
+    }
+  }, [activeCategory, categoryOptions]);
+
   const handleVoteChange = useCallback((slug: string, score: number) => {
     setScores((prev) => ({ ...prev, [slug]: score }));
   }, []);
@@ -152,7 +165,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
         t.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     })
-    .filter((t) => activeCategory === 'All' || t.category === activeCategory)
+    .filter((t) => activeCategory === 'All' || toolMatchesCategory(t, activeCategory))
     .filter((t) => toolMatchesPricingModel(t.subscription, activePricing))
     .filter((t) => activePayment === 'All' || t.payment.includes(activePayment))
     .slice()
@@ -243,6 +256,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
 
             <div id="ainsfw-tools" className="scroll-mt-24">
               <AinsfwToolsFilterBar
+                categoryOptions={categoryOptions}
                 activeCategory={activeCategory}
                 activePricing={activePricing}
                 activePayment={activePayment}

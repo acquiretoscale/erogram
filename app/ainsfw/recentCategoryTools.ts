@@ -1,15 +1,20 @@
 import type { AINsfwTool } from './types';
 import { AINSFW_PAID_CLIENTS } from './fullReviews';
 import { AINSFW_RECENT_EXCLUDED_SLUGS } from './newlyAddedSlugs';
+import { toolMatchesCategory } from '@/lib/ainsfw/categoryListings';
 
 export const RECENT_POOL_LIMIT = 8;
-export const RECENT_DISPLAY_LIMIT = 4;
+export const RECENT_DISPLAY_LIMIT = 8;
 
 /** When a category has fewer paid recent listings, pull from these related categories next. */
 const RELATED_CATEGORIES: Record<string, string[]> = {
   'AI Porn Generator': ['Undress AI', 'AI NSFW Image Generator'],
   'Undress AI': ['AI Porn Generator', 'AI NSFW Image Generator'],
   'AI NSFW Image Generator': ['AI Porn Generator', 'Undress AI'],
+  'AI Nude Generator': ['AI Porn Generator', 'AI NSFW Image Generator', 'AI Video Generator'],
+  'AI Video Generator': ['AI Nude Generator', 'AI NSFW Image Generator'],
+  'AI Girlfriend': ['AI Companion', 'AI NSFW Chat'],
+  'AI NSFW Chat': ['AI Girlfriend', 'AI Companion'],
   'AI Companion': ['AI Sexting / Chat', 'AI NSFW Roleplay'],
   'AI Sexting / Chat': ['AI Companion', 'AI NSFW Roleplay'],
   'AI NSFW Roleplay': ['AI Sexting / Chat', 'AI Companion'],
@@ -23,19 +28,23 @@ function isExcluded(slug: string): boolean {
 export function pickRecentTools(
   toolsBySlug: Map<string, AINsfwTool>,
   paidSubmissions: Array<AINsfwTool & { createdAt?: string }>,
-  options?: { category?: string; limit?: number },
+  options?: { category?: string; limit?: number; excludeSlugs?: Iterable<string> },
 ): AINsfwTool[] {
   const limit = options?.limit ?? RECENT_POOL_LIMIT;
+  const excludeSlugs = new Set(options?.excludeSlugs ?? []);
   const submissionSlugs = new Set(paidSubmissions.map((t) => t.slug));
 
   const fromDb = [...paidSubmissions]
-    .filter((tool) => tool.createdAt && !isExcluded(tool.slug))
-    .filter((tool) => !options?.category || tool.category === options.category);
+    .filter((tool) => tool.createdAt && !isExcluded(tool.slug) && !excludeSlugs.has(tool.slug))
+    .filter((tool) => !options?.category || toolMatchesCategory(tool, options.category));
 
   const fromPaidClients = AINSFW_PAID_CLIENTS
-    .filter(({ slug }) => !isExcluded(slug) && !submissionSlugs.has(slug) && toolsBySlug.has(slug))
+    .filter(
+      ({ slug }) =>
+        !isExcluded(slug) && !excludeSlugs.has(slug) && !submissionSlugs.has(slug) && toolsBySlug.has(slug),
+    )
     .map(({ slug, goLive }) => ({ ...toolsBySlug.get(slug)!, createdAt: goLive }))
-    .filter((tool) => !options?.category || tool.category === options.category);
+    .filter((tool) => !options?.category || toolMatchesCategory(tool, options.category));
 
   return [...fromDb, ...fromPaidClients]
     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
@@ -47,12 +56,17 @@ export function pickRecentCategoryTools(
   toolsBySlug: Map<string, AINsfwTool>,
   paidSubmissions: Array<AINsfwTool & { createdAt?: string }>,
   limit = RECENT_POOL_LIMIT,
+  excludeSlugs?: Iterable<string>,
 ): AINsfwTool[] {
   const picked: AINsfwTool[] = [];
   const seen = new Set<string>();
 
   const addFromCategory = (cat: string | undefined) => {
-    const batch = pickRecentTools(toolsBySlug, paidSubmissions, { category: cat, limit: RECENT_POOL_LIMIT });
+    const batch = pickRecentTools(toolsBySlug, paidSubmissions, {
+      category: cat,
+      limit: RECENT_POOL_LIMIT,
+      excludeSlugs,
+    });
     for (const tool of batch) {
       if (picked.length >= limit || seen.has(tool.slug)) continue;
       seen.add(tool.slug);

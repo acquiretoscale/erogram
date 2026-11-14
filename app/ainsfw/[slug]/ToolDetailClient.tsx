@@ -13,7 +13,7 @@ import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import type { AuthorProfile } from '@/lib/actions/authors';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { FeedCampaign } from '@/app/groups/types';
-import { getAinsfwTagHref } from '@/lib/ainsfw/internalLinks';
+import { listingCategoryPlacementsForDisplay } from '@/lib/ainsfw/categoryListings';
 import { categoryToSlug } from '../data';
 import { AINSFW_CATEGORIES } from '../types';
 import { AINSFW_TOOL_ARTICLE_LINKS } from '@/lib/ainsfw/toolArticles';
@@ -28,6 +28,7 @@ import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import ToolProsConsSkeleton from '@/components/ainsfw/ToolProsConsSkeleton';
 import ToolKeyFeatures from '@/components/ainsfw/ToolKeyFeatures';
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
+import AinsfwReviewStars from '@/components/ainsfw/AinsfwReviewStars';
 import TopAINsfwBlock from '../TopAINsfwBlock';
 import { hasProsCons, type AINsfwListingBlocks } from '../listingBlocks';
 import { getMemoryPeers } from '../memoryPeers';
@@ -67,6 +68,8 @@ interface ToolDetailClientProps {
   featuredHubStats?: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
   topAdCampaigns?: FeedCampaign[];
+  /** Hub categories that have listings (skip empty browse links). */
+  browseCategories?: string[];
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -608,7 +611,7 @@ function ReviewGlossary({
   );
 }
 
-export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [] }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], browseCategories }: ToolDetailClientProps) {
   const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
   const placeholder = '/assets/image.jpg';
   const [imageSrc, setImageSrc] = useState(
@@ -704,7 +707,6 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const reviewAvg = reviews.length > 0
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : 0;
-  const flameRating = Math.round(reviewAvg);
   const btnColor = CATEGORY_COLOR[tool.category] || 'bg-gray-700';
   const catBadge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
@@ -879,18 +881,14 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 className="w-full flex items-center justify-center gap-2 mb-4 py-3 rounded-xl border border-[#22c55e]/20 bg-[#0a1f12]/85 hover:bg-[#22c55e]/10 transition-colors"
                 aria-label={`See all ${reviews.length} reviews`}
               >
-                <div className="flex items-center gap-0.5 shrink-0" aria-hidden>
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <svg
-                      key={s}
-                      className={`w-4 h-4 ${reviews.length > 0 && s <= flameRating ? 'text-[#22c55e]' : 'text-gray-600'}`}
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  ))}
-                </div>
+                {reviews.length > 0 && (
+                  <AinsfwReviewStars
+                    avg={reviewAvg}
+                    size="detail"
+                    filledClass="text-[#22c55e]"
+                    emptyClass="text-gray-600"
+                  />
+                )}
                 <span className="text-base font-bold text-[#22c55e]">
                   {reviewsLabel(reviews.length)}
                 </span>
@@ -921,22 +919,17 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 </button>
               </div>
 
-              {/* Tags */}
+              {/* Category placements (up to 6) — same categories as hub pages */}
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {tool.tags.slice(0, 6).map((tag) => {
-                  const href = getAinsfwTagHref(tag);
-                  const label = `#${tag.replace(/\s+/g, '-')}`;
-                  const className = 'bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200 hover:bg-white/15 hover:border-[#22c55e]/40 hover:text-[#22c55e] transition-all';
-                  return href ? (
-                    <Link key={tag} href={href} className={className}>
-                      {label}
-                    </Link>
-                  ) : (
-                    <span key={tag} className={className}>
-                      {label}
-                    </span>
-                  );
-                })}
+                {listingCategoryPlacementsForDisplay(tool).map((cat) => (
+                  <Link
+                    key={cat}
+                    href={lp(`/ainsfw/${categoryToSlug(cat)}`)}
+                    className="bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200 hover:bg-white/15 hover:border-[#22c55e]/40 hover:text-[#22c55e] transition-all"
+                  >
+                    {catLabel(cat)}
+                  </Link>
+                ))}
               </div>
 
               <div className="pt-4 border-t border-white/10">
@@ -1019,13 +1012,12 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   className="flex items-center gap-2 mb-4 text-left hover:opacity-80 transition-opacity cursor-pointer"
                   aria-label={`Jump to ${reviews.length} reviews`}
                 >
-                  <div className="flex">
-                    {[1,2,3,4,5].map((s) => (
-                      <svg key={s} className={`w-4 h-4 ${s <= flameRating ? 'text-[#22c55e]' : 'text-gray-600'}`} viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    ))}
-                  </div>
+                  <AinsfwReviewStars
+                    avg={reviewAvg}
+                    size="detail"
+                    filledClass="text-[#22c55e]"
+                    emptyClass="text-gray-600"
+                  />
                   <span className="text-gray-400 text-sm">{reviewAvg}/5 · {reviewsLabel(reviews.length)}</span>
                 </button>
               )}
@@ -1355,7 +1347,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
           <h2 className="text-xl sm:text-2xl font-black text-white mb-2">{t('ainsfw.browseCategories', 'Browse AI NSFW Categories')}</h2>
           <p className="text-gray-400 text-sm mb-5">{t('ainsfw.browseCategoriesSub', 'Explore tools by type on Erogram')}</p>
           <div className="flex flex-wrap gap-2">
-            {AINSFW_CATEGORIES.filter((c) => c !== 'All').map((cat) => (
+            {(browseCategories ?? AINSFW_CATEGORIES.filter((c) => c !== 'All')).map((cat) => (
               <Link
                 key={cat}
                 href={lp(`/ainsfw/${categoryToSlug(cat)}`)}

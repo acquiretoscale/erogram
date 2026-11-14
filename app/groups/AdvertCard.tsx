@@ -409,11 +409,11 @@ function AinsfwHubAdCard({
                 onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
                 className={spotlight
                     ? 'relative bg-[#ecfdf3] rounded-xl overflow-hidden h-full flex flex-col border-2 border-[#22c55e]/70 hover:border-[#16a34a] shadow-[0_10px_28px_-14px_rgba(34,197,94,0.7)] transition-all duration-150 group cursor-pointer'
-                    : 'relative bg-[#111] rounded-xl overflow-hidden h-full flex flex-col border border-white/10 hover:border-[#22c55e]/50 transition-all duration-150 group cursor-pointer'}
+                    : 'relative bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-black/25 shadow-sm transition-all duration-150 group cursor-pointer'}
             >
                 <div ref={imgRef} className={spotlight
                     ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#d1fae5] shrink-0'
-                    : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0'}>
+                    : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-gray-100 shrink-0'}>
                     <Image
                         src={imageSrc}
                         alt={campaign.name}
@@ -427,14 +427,14 @@ function AinsfwHubAdCard({
                 <div className="p-2.5 sm:p-3 flex flex-col flex-grow">
                     <h3 className={spotlight
                         ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#15803d] transition-colors flex items-center gap-1 min-w-0'
-                        : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0'}>
+                        : 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-black transition-colors flex items-center gap-1 min-w-0'}>
                         <span className="truncate">{campaign.name}</span>
                         {showVerified && <VerifiedBadge className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />}
                     </h3>
                     {campaign.description ? (
                         <p className={spotlight
                             ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'
-                            : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'}>
+                            : 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'}>
                             {capAinsfwAdWords(campaign.description)}
                         </p>
                     ) : (
