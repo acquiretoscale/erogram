@@ -15,8 +15,6 @@ import { getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { loadHomeDirectoryCategories } from '@/lib/bestDirectory/loadRankings';
 import { filterCategories, categorySlug } from '@/app/groups/constants';
-import { getHomeFeaturedOfCreator } from '@/lib/explore/getHomeFeaturedOfCreator';
-
 export const revalidate = 300;
 
 const COUNTRY_FILTERS = new Set([
@@ -207,7 +205,7 @@ export default async function Home() {
     loadHomeDirectoryCategories(),
     getTopGroupCategories(16),
     getPublishedBlogArticles(6),
-    getHomeFeaturedOfCreator(),
+    Promise.resolve(null),
     getActiveCampaigns('top-banner', { page: 'homepage' }).catch(() => []),
   ]);
 
