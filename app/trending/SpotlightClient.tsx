@@ -6,7 +6,6 @@ import { EditorialMasthead, EditorialFooter } from '../blog/EditorialChrome';
 import NewsletterSignup from '../blog/NewsletterSignup';
 import { CoverModelCard, ReaderFavourites } from '../blog/BlogSpotlight';
 import HomeAdBlock from './HomeAdBlock';
-import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import type { FeedCampaign } from '@/app/groups/types';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { BlogFeaturedCreatorData } from '@/lib/actions/blogFeatured';
@@ -31,7 +30,7 @@ export default function SpotlightClient({
   homeBlock2Ads?: FeedCampaign[];
 }) {
   const cover = articles[0];
-  const coverCat = cover ? BLOG_CATEGORY_MAP[cover.blogCategory] : undefined;
+  const coverTag = cover?.tags?.[0] || '';
   const blogTeaser = articles.slice(0, 4);
 
   const now = new Date();
@@ -75,7 +74,7 @@ export default function SpotlightClient({
                 </div>
               </Link>
               <div className="flex flex-col flex-1 p-7 sm:p-9">
-                <div className="text-[10px] font-bold tracking-[0.3em] uppercase mb-3" style={{ color: PLUM }}>Cover Story · {coverCat?.eyebrow || 'Feature'}</div>
+                <div className="text-[10px] font-bold tracking-[0.3em] uppercase mb-3" style={{ color: PLUM }}>{coverTag ? `Cover Story · ${coverTag}` : 'Cover Story'}</div>
                 <Link href={`/blog/${cover.slug}`}>
                   <h2 className="font-[family-name:var(--font-baloo)] font-extrabold text-[1.9rem] sm:text-[2.4rem] leading-[1.05] tracking-tight transition-colors" style={{ color: PLUM }}>{cover.title}</h2>
                 </Link>

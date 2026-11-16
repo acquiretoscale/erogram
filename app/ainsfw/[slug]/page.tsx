@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import connectDB from '@/lib/db/mongodb';
-import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS, toolSlug, invertToolSlug, getCategoryBySlug, CATEGORY_SLUGS, categoryToSlug, getLegacyToolSlugRedirect } from '@/app/ainsfw/data';
+import { getToolBySlug, getToolsByCategory, AI_NSFW_TOOLS, toolSlug, invertToolSlug, getCategoryBySlug, CATEGORY_SLUGS, getLegacyToolSlugRedirect } from '@/app/ainsfw/data';
 import CategoryClient from '@/app/ainsfw/[slug]/CategoryClient';
 import { getBlogArticlesByCategory } from '@/lib/actions/blog';
 import type { BlogCard } from '@/lib/actions/blog';
@@ -11,7 +11,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
 import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
 import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
-import { getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 import { getPopulatedHubCategories, mergeCategoryPageTools } from '@/lib/ainsfw/categoryListings';
 import { pickRecentCategoryTools, RECENT_POOL_LIMIT } from '@/app/ainsfw/recentCategoryTools';
@@ -170,9 +170,10 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const category = getCategoryBySlug(slug);
   if (category) {
     const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
-    const [allPaidSubmissions, topAdCampaigns] = await Promise.all([
+    const [allPaidSubmissions, topAdCampaigns, topBannerCampaigns] = await Promise.all([
       getApprovedSubmissions(),
       getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
+      getActiveCampaigns('top-banner', { page: 'ainsfw-page' }).catch(() => []),
     ]);
     const placementSlugs = [...AI_NSFW_TOOLS, ...allPaidSubmissions].map((t) => t.slug);
     const placementStats = await getAllToolStats(placementSlugs);
@@ -200,12 +201,12 @@ export default async function AINsfwToolPage({ params }: PageProps) {
       featuredHubSlugs,
     );
     const recentStats = await getAllToolStats(recentTools.map((t) => t.slug));
-    const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+    const featuredHubStats = await getAllToolStats(featuredHubSlugs);
+    const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug), { ...allStats, ...recentStats, ...featuredHubStats });
     const featuredCatalogTools = [
       ...AI_NSFW_TOOLS,
       ...paidSubmissions.filter((t) => !staticSlugs.has(t.slug)),
     ];
-    const featuredHubStats = await getAllToolStats(featuredHubSlugs);
     return (
       <CategoryClient
         category={category}
@@ -218,6 +219,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         featuredHubStats={featuredHubStats}
         verifiedSlugs={verifiedSlugs}
         topAdCampaigns={topAdCampaigns}
+        topBannerCampaigns={topBannerCampaigns}
       />
     );
   }
@@ -247,25 +249,28 @@ export default async function AINsfwToolPage({ params }: PageProps) {
 
   const fileReview = getFullReview(aiTool.slug);
   const isPaidClientListing = isPaidClientTool(aiTool.slug) || !!submissionTool;
-  const showVerified = isPaidClientListing;
   const listingBlocksRaw = getListingBlocks(aiTool.slug);
 
-  const [toolStats, aiArticles, topAdCampaigns] = await Promise.all([
+  const [toolStats, aiArticles, topAdCampaigns, topBannerCampaigns] = await Promise.all([
     getToolStats(aiTool.slug),
     getBlogArticlesByCategory('ai-nsfw', 4),
     getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
+    getActiveCampaigns('top-banner', { page: 'ainsfw-page' }).catch(() => []),
   ]);
 
-  const featuredHubSlugs = await resolveFeaturedHubSlugs();
-  const featuredToolsBySlug = new Map([
-    ...AI_NSFW_TOOLS.map((t) => [t.slug, t] as const),
-    ...paidSubmissions.map((t) => [t.slug, t] as const),
-  ]);
-  const featuredHubToolsRaw = featuredHubSlugs
-    .map((s) => featuredToolsBySlug.get(s))
-    .filter(Boolean) as AINsfwTool[];
-  const featuredHubStats = await getAllToolStats(featuredHubSlugs);
-  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+  const allPaidForPlacements = await getApprovedSubmissions();
+  const categoryPeers = mergeCategoryPageTools(
+    aiTool.category,
+    [],
+    allPaidForPlacements,
+    AI_NSFW_TOOLS,
+  ).filter((t) => t.slug !== aiTool.slug);
+  const featuredHubStats = await getAllToolStats(categoryPeers.map((t) => t.slug));
+  const featuredHubToolsRaw = [...categoryPeers]
+    .sort((a, b) => (featuredHubStats[b.slug]?.upvotes ?? 0) - (featuredHubStats[a.slug]?.upvotes ?? 0))
+    .slice(0, 4);
+  const featuredHubSlugs = featuredHubToolsRaw.map((t) => t.slug);
+  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug), featuredHubStats);
 
   const savedIntro = toolStats.editorialReview?.shortDescription?.trim() || '';
   const savedHighlights = (toolStats.editorialReview?.featureHighlights || [])
@@ -279,6 +284,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         alternatives: fileReview?.alternatives,
       }
     : fileReview;
+  const showVerified = toolStats.verified === true || (toolStats.verified !== false && !!fullReview);
   const reviewAuthor = fullReview ? await getAuthorBySlug('eros') : undefined;
   const showListingBlocks = !!listingBlocksRaw && (
     !!fullReview || isPaidClientTool(aiTool.slug) || !!submissionTool
@@ -300,7 +306,6 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     : mergedTool;
   const featuredHubTools = featuredHubToolsRaw.map((t) => mergeToolContent(t, featuredHubStats[t.slug]));
 
-  const allPaidForPlacements = await getApprovedSubmissions();
   const browseCategories = getPopulatedHubCategories(AI_NSFW_TOOLS, allPaidForPlacements).filter(
     (c) => c !== 'All',
   );
@@ -314,8 +319,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
       { '@type': 'ListItem', position: 2, name: 'AI NSFW Tools', item: `${BASE_URL}/ainsfw` },
-      { '@type': 'ListItem', position: 3, name: displayTool.category, item: `${BASE_URL}/ainsfw/${categoryToSlug(displayTool.category)}` },
-      { '@type': 'ListItem', position: 4, name: displayTool.name, item: toolPageUrl },
+      { '@type': 'ListItem', position: 3, name: displayTool.name, item: toolPageUrl },
     ],
   };
 
@@ -366,6 +370,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         verifiedSlugs={verifiedSlugs}
         topAdCampaigns={topAdCampaigns}
         browseCategories={browseCategories}
+        topBannerCampaigns={topBannerCampaigns}
       />
     </>
   );

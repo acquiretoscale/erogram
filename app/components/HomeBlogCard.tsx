@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import type { BlogCard } from '@/lib/actions/blog';
-import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import { formatDate } from '@/lib/i18n/date';
 import type { Locale } from '@/lib/i18n/config';
 
@@ -22,8 +21,7 @@ export default function HomeBlogCard({
   locale: Locale;
   index?: number;
 }) {
-  const cat = BLOG_CATEGORY_MAP[article.blogCategory];
-  const eyebrow = cat?.eyebrow || 'Feature';
+  const eyebrow = article.tags?.[0] || '';
   const tint = PLACEHOLDER_TINTS[index % PLACEHOLDER_TINTS.length];
 
   return (
@@ -52,9 +50,11 @@ export default function HomeBlogCard({
         </div>
 
         <div className="flex flex-1 flex-col px-5 pb-4 pt-5">
+          {eyebrow ? (
           <p className="mb-3 text-[12px] sm:text-[11px] font-bold uppercase tracking-[0.3em] text-[#c0392f]">
             {eyebrow}
           </p>
+          ) : null}
           <h3 className="mb-3 line-clamp-2 font-sans text-[1.05rem] font-bold leading-[1.3] tracking-tight text-[#0f0c0a]">
             {article.title}
           </h3>

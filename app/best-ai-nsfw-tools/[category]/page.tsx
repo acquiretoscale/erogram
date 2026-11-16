@@ -18,6 +18,7 @@ import {
 import { buildBestAiToolTop10, buildBestAiToolTop20Crypto } from '@/lib/bestAiNsfwTools/top10List';
 import { getBestAiToolsHeroIntro } from '@/lib/bestAiNsfwTools/heroIntros';
 import BestAiToolsCategoryClient from '@/app/best-ai-nsfw-tools/BestAiToolsCategoryClient';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 
 export const revalidate = 300;
 
@@ -167,7 +168,10 @@ export default async function BestAiToolsCategoryPage({ params }: PageProps) {
     const year = new Date().getFullYear();
     const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE', es: 'es-ES', pt: 'pt-BR' };
     const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
-    const ranking = await buildBestAiToolTop20Crypto(cryptoPage);
+    const [ranking, topBannerCampaigns] = await Promise.all([
+      buildBestAiToolTop20Crypto(cryptoPage),
+      getActiveCampaigns('top-banner', { page: 'ranking-ainsfw' }).catch(() => []),
+    ]);
 
     return (
       <BestAiToolsCategoryClient
@@ -186,6 +190,7 @@ export default async function BestAiToolsCategoryPage({ params }: PageProps) {
         wantMore={b.wantMore || 'Want to see more?'}
         wantMoreDesc={b.wantMoreDesc || 'Browse the full AI NSFW directory with filters, reviews, and ratings.'}
         browseAll={b.browseAll || 'Browse All AI Tools'}
+        topBannerCampaigns={topBannerCampaigns}
       />
     );
   }
@@ -196,7 +201,10 @@ export default async function BestAiToolsCategoryPage({ params }: PageProps) {
   const year = new Date().getFullYear();
   const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE', es: 'es-ES', pt: 'pt-BR' };
   const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
-  const ranking = await buildBestAiToolTop10(page);
+  const [ranking, topBannerCampaigns] = await Promise.all([
+    buildBestAiToolTop10(page),
+    getActiveCampaigns('top-banner', { page: 'ranking-ainsfw' }).catch(() => []),
+  ]);
 
   return (
     <BestAiToolsCategoryClient
@@ -214,6 +222,7 @@ export default async function BestAiToolsCategoryPage({ params }: PageProps) {
       wantMore={b.wantMore || 'Want to see more?'}
       wantMoreDesc={b.wantMoreDesc || 'Browse the full AI NSFW directory with filters, reviews, and ratings.'}
       browseAll={b.browseAll || 'Browse All AI Tools'}
+      topBannerCampaigns={topBannerCampaigns}
     />
   );
 }

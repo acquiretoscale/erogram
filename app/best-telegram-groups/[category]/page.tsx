@@ -10,7 +10,8 @@ import Navbar from '@/components/Navbar';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, localePath } from '@/lib/i18n';
-import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import HeaderBanner from '@/components/HeaderBanner';
 import BestGroupsAds from '@/app/best-telegram-groups/BestGroupsAds';
 import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { getMetaDescription } from '@/lib/bestTelegramGroups/metaDescriptions';
@@ -247,7 +248,10 @@ export default async function BestGroupsPage({ params }: PageProps) {
     }
 
     // Ad network: one agnostic ad for this Top-10 page (keyword-targeted to this category).
-    const bestGroupsAds = await getKeywordPlacementCampaigns('best-groups', decodedSlug, 1).catch(() => []);
+    const [bestGroupsAds, topBannerCampaigns] = await Promise.all([
+      getKeywordPlacementCampaigns('best-groups', decodedSlug, 1).catch(() => []),
+      getActiveCampaigns('top-banner', { page: 'ranking-groups' }).catch(() => []),
+    ]);
     const topGroupAd = (bestGroupsAds as any[])[0] || null;
 
     return (
@@ -255,6 +259,9 @@ export default async function BestGroupsPage({ params }: PageProps) {
             <Navbar />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+                <div className="w-full mb-8">
+                    <HeaderBanner campaigns={topBannerCampaigns} />
+                </div>
                 {/* Article Header */}
                 <header className="text-center mb-16">
                     <div className="inline-block px-4 py-1 bg-[#b31b1b]/20 text-[#b31b1b] rounded-full text-sm font-bold mb-4 border border-[#b31b1b]/30">

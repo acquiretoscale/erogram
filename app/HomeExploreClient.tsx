@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import HeaderBanner from '@/components/HeaderBanner';
@@ -13,11 +13,19 @@ import { useTranslation, useLocalePath } from '@/lib/i18n/client';
 import type { ExploreCategory, ExploreSite } from '@/lib/explore/topPornSitesData';
 import { exploreMascotFallbackSrc, exploreMascotSrc } from '@/lib/explore/mascotIcons';
 import { pickLabelForFirstPick } from '@/lib/explore/pickLabels';
-import { HOME_DIRECTORY_GROUPS, HOME_LEADER_PREVIEW_SLUGS, homePreviewLimit } from '@/lib/bestDirectory/config';
+import { HOME_DIRECTORY_GROUPS, homePreviewLimit } from '@/lib/bestDirectory/config';
+import { getHomeFeaturedForAdmin, type HomeFeaturedAdminSlot } from '@/lib/actions/homeFeatured';
 import type { HomeFeaturedOfCreator } from '@/lib/explore/homeFeaturedOfCreator';
 import HomeOfFeaturedCreatorCard from '@/app/components/HomeOfFeaturedCreatorCard';
 import { exploreListIconSrc } from '@/lib/explore/siteIconDomain';
 import { exploreSiteOutboundRel } from '@/lib/explore/exploreOutboundRel';
+
+const HomeFeaturedPicker = dynamic(() => import('@/app/components/HomeFeaturedPicker'), { ssr: false });
+
+type FeaturedAdmin = {
+  slots: Record<string, HomeFeaturedAdminSlot>;
+  onSaved: (cardSlug: string, slot: HomeFeaturedAdminSlot | null) => void;
+};
 
 const ACCENT = '#c0392f';
 const MASCOT_SIZE = 52;
@@ -74,10 +82,22 @@ function listingHref(site: ExploreSite): string {
   return site.externalUrl ?? site.url;
 }
 
+function outboundHref(site: ExploreSite): string {
+  const ext = (site.externalUrl || '').trim();
+  if (ext) return ext;
+  if (!isInternalExploreUrl(site.url)) return site.url;
+  return listingHref(site);
+}
+
 function opensListingInNewTab(site: ExploreSite): boolean {
   const href = listingHref(site);
   if (isInternalExploreUrl(href)) return Boolean(site.openInNewTab);
   return true;
+}
+
+function opensOutboundInNewTab(site: ExploreSite): boolean {
+  const href = outboundHref(site);
+  return Boolean((site.externalUrl || '').trim()) || Boolean(site.openInNewTab) || !isInternalExploreUrl(href);
 }
 
 function showExternalShortcut(site: ExploreSite): boolean {
@@ -173,10 +193,20 @@ function SiteExternalShortcut({ site }: { site: ExploreSite }) {
   );
 }
 
-function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; categorySlug: string }) {
-  const href = listingHref(site);
-  const newTab = opensListingInNewTab(site);
-  const pickLabel = site.featured ? pickLabelForFirstPick(categorySlug) : null;
+function PickBadge({ label }: { label: string }) {
+  return (
+    <span className="shrink-0 ml-auto inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-[#fff3c4]/70 bg-gradient-to-b from-[#fbe7a1] via-[#e5b94e] to-[#b8862b] px-2 py-1 text-[10px] font-black uppercase leading-none tracking-[0.1em] text-[#3b2a05] shadow-[0_2px_8px_-2px_rgba(184,134,43,0.7),inset_0_1px_0_rgba(255,255,255,0.6)]">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" />
+      </svg>
+      {label}
+    </span>
+  );
+}
+
+function LeaderToolPreview({ site }: { site: ExploreSite }) {
+  const href = outboundHref(site);
+  const newTab = opensOutboundInNewTab(site);
   const inner = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -192,11 +222,6 @@ function LeaderToolPreview({ site, categorySlug }: { site: ExploreSite; category
           <span className="block text-[12px] sm:text-[11px] font-black tracking-[0.12em] uppercase text-white/70">#1</span>
           <span className="block text-[15px] sm:text-base font-black leading-tight text-white truncate">{site.name}</span>
         </div>
-        {pickLabel ? (
-          <span className="shrink-0 text-[12px] sm:text-[11px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
-            {pickLabel}
-          </span>
-        ) : null}
       </div>
     </>
   );
@@ -240,9 +265,11 @@ function CategoryMascot({ categoryIndex }: { categoryIndex: number }) {
 function CategoryCard({
   category,
   categoryIndex,
+  featuredAdmin,
 }: {
   category: ExploreCategory;
   categoryIndex: number;
+  featuredAdmin?: FeaturedAdmin | null;
 }) {
   const lp = useLocalePath();
   const previewLimit = homePreviewLimit(category.slug);
@@ -252,9 +279,8 @@ function CategoryCard({
     (sum, site) => sum + (site.featured ? FEATURED_ROW_HEIGHT : ROW_HEIGHT),
     12,
   );
-  const showLeaderPreview = (HOME_LEADER_PREVIEW_SLUGS as readonly string[]).includes(category.slug);
-  const leaderSite =
-    showLeaderPreview && category.sites[0]?.image ? category.sites[0] : undefined;
+  const leaderSite = category.sites[0]?.image ? category.sites[0] : undefined;
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   return (
     <section
@@ -270,14 +296,36 @@ function CategoryCard({
             {category.title}
           </h2>
           {category.description ? (
-            <p className="mt-1.5 text-[12px] sm:text-[11px] leading-snug text-white/55 font-medium">
-              {category.description}
-            </p>
+            <div className="mt-1 flex items-start gap-1.5">
+              <p
+                className={`min-w-0 flex-1 text-[13px] leading-snug text-white/65 font-medium ${
+                  descriptionOpen ? '' : 'line-clamp-1'
+                }`}
+              >
+                {category.description}
+              </p>
+              <button
+                type="button"
+                onClick={() => setDescriptionOpen((open) => !open)}
+                aria-expanded={descriptionOpen}
+                className="shrink-0 text-[13px] leading-snug font-bold text-[#ff8a7a] hover:text-white transition-colors"
+              >
+                {descriptionOpen ? 'less' : 'more'}
+              </button>
+            </div>
           ) : null}
         </div>
       </div>
 
-      {leaderSite ? <LeaderToolPreview site={leaderSite} categorySlug={category.slug} /> : null}
+      {featuredAdmin ? (
+        <HomeFeaturedPicker
+          cardSlug={category.slug}
+          current={featuredAdmin.slots[category.slug]}
+          onSaved={featuredAdmin.onSaved}
+        />
+      ) : null}
+
+      {leaderSite ? <LeaderToolPreview site={leaderSite} /> : null}
 
       <div className="px-3 py-2.5 bg-white overflow-hidden" style={{ height: `${previewHeight}px` }}>
         <ol>
@@ -294,7 +342,7 @@ function CategoryCard({
               }`;
               const pickLabel =
                 site.featured && featuredIndexBefore(category.sites, index) === 0
-                  ? pickLabelForFirstPick(category.slug)
+                  ? category.badgeLabel || pickLabelForFirstPick(category.slug)
                   : null;
 
               if (site.featured) {
@@ -307,11 +355,7 @@ function CategoryCard({
                     <span className="min-w-0 text-[16px] font-black leading-tight text-gray-900 truncate group-hover:text-[#c0392f] transition-colors">
                       {site.name}
                     </span>
-                    {pickLabel ? (
-                      <span className="shrink-0 ml-auto text-[12px] sm:text-[11px] font-black tracking-[0.08em] uppercase text-white bg-[#c0392f] px-1.5 py-0.5 rounded max-w-[92px] text-center leading-tight">
-                        {pickLabel}
-                      </span>
-                    ) : null}
+                    {pickLabel ? <PickBadge label={pickLabel} /> : null}
                   </>
                 );
                 return (
@@ -381,99 +425,103 @@ export default function HomeExploreClient({
   locale?: Locale;
   faq?: ReactNode;
 }) {
-  const { t, dict } = useTranslation();
+  const { t } = useTranslation();
   const lp = useLocalePath();
-  const router = useRouter();
   const bySlug = new Map(categories.map((category) => [category.slug, category]));
+  const [featuredSlots, setFeaturedSlots] = useState<Record<string, HomeFeaturedAdminSlot> | null>(null);
 
-  const navCards: { title: string; href: string; icon: React.ReactNode; iconColor: string }[] = [
-    {
-      title: 'Telegram Groups',
-      href: lp('/groups'),
-      iconColor: '#000',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>,
-    },
-    {
-      title: 'Telegram Bots',
-      href: lp('/bots'),
-      iconColor: '#000',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
-    },
-    {
-      title: 'AI NSFW Tools',
-      href: lp('/ainsfw'),
-      iconColor: '#000',
-      icon: <img src="/assets/lips-icon.png" alt={dict.meta?.ainsfwTitle || 'AI NSFW Tools'} width="20" height="20" style={{ objectFit: 'contain' }} />,
-    },
-    {
-      title: 'Porn Websites',
-      href: lp('/best-porn'),
-      iconColor: '#000',
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/><path d="M12 18v2"/></svg>,
-    },
-  ];
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || localStorage.getItem('isAdmin') !== 'true') return;
+    getHomeFeaturedForAdmin(token)
+      .then(setFeaturedSlots)
+      .catch(() => {});
+  }, []);
 
-  const renderCard = (c: typeof navCards[0]) => (
-    <button
-      key={c.title}
-      type="button"
-      aria-label={c.title}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimeout(() => router.push(c.href), 0); }}
-      className="hero-nav-card"
-    >
-      <span className="hero-nav-card__body">
-        <span className="hero-nav-card__top">
-          <span className="hero-nav-card__bare" style={{ color: c.iconColor }}>{c.icon}</span>
-          <span className="hero-nav-card__title">{c.title}</span>
-          <svg className="hero-nav-card__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
-        </span>
-      </span>
-    </button>
-  );
+  const featuredAdmin: FeaturedAdmin | null = featuredSlots
+    ? {
+        slots: featuredSlots,
+        onSaved: (cardSlug, slot) =>
+          setFeaturedSlots((prev) => {
+            const next = { ...(prev || {}) };
+            if (slot) next[cardSlug] = slot;
+            else delete next[cardSlug];
+            return next;
+          }),
+      }
+    : null;
 
   return (
     <div>
-    <div className="explore-page explore-bg explore-scanlines min-h-screen text-white relative">
+    <div className="explore-page explore-bg explore-scanlines home-light min-h-screen text-white relative">
       <Navbar accent={ACCENT} />
 
       <div className="relative z-10 home-hero-section">
-        <div className="relative z-[1] max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-28 sm:pt-32 pb-10 sm:pb-12">
-          <div className="text-center max-w-4xl mx-auto mb-5 sm:mb-6">
-            <h1 className="home-hero-title text-[15px] sm:text-[22px] md:text-[27px] mb-4 sm:mb-5">
-              <span className="home-hero-title-mark">Your #1 ADULT entretainement platform</span>
+        <div className="relative z-[1] max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-24 sm:pt-[104px] pb-4 sm:pb-6">
+          <div className="text-center max-w-6xl mx-auto">
+            <h1 className="home-hero-title whitespace-nowrap text-[clamp(24px,7vw,88px)]">
+              <span className="home-hero-title-mark">Your #1 </span>
+              <span className="home-hero-title-accent">ADULT</span>
+              <span className="home-hero-title-mark"> entretainement Hub</span>
             </h1>
-            <p className="mb-7 sm:mb-8 max-w-xl sm:max-w-2xl mx-auto text-center text-[12px] sm:text-[11px] text-white leading-relaxed font-medium">
-              <span className="home-hero-sub-mark">
-              Your #1 Porn Telegram, Porn websites &amp; AI NSFW Hub The best{' '}
-              <Link href={lp('/groups')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
-                porn Telegram groups
-              </Link>
-              , and{' '}
-              <Link href={lp('/bots')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
-                bots
+            <span className="home-hero-divider" aria-hidden="true" />
+            <p className="home-hero-sub mb-4 sm:mb-5 max-w-2xl mx-auto text-center text-[16px] sm:text-[18px] leading-[1.65] font-normal">
+              <span>
+              Find the best Adult{' '}
+              <Link href={lp('/ainsfw')}>
+                AI NSFW tools
               </Link>
               ,{' '}
-              <Link href={lp('/ainsfw')} className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
-                AI porn
+              <Link href={lp('/ainsfw/undress-ai')}>
+                AI nude generators
               </Link>
-              {' '}and nude generators, AI girlfriend apps, VR porn, adult games, Reddit communities, live sex cam sites, and{' '}
-              <Link href="#best-porn" className="text-white underline underline-offset-2 decoration-white/50 hover:text-white hover:decoration-white">
-                the best porn
+              ,{' '}
+              <Link href={lp('/ainsfw/ai-girlfriend')}>
+                Unconsored AI girlfriend
               </Link>
-              {' '}by niche Asian, BDSM, Jav Porn, blowjob, gangbang, and everything in between.
+              , and the best{' '}
+              <Link href={lp('/best-porn')}>
+                Adult websites
+              </Link>
+              {' '}(
+              <Link href={lp('/best-vr-porn')}>
+                VR Porn
+              </Link>
+              ,{' '}
+              <Link href={lp('/best-uncensored-jav-porn-websites')}>
+                JAV
+              </Link>
+              ,{' '}
+              <Link href={lp('/best-hookup')}>
+                Hookup
+              </Link>
+              ,{' '}
+              <Link href={lp('/best-live-sex-cam-websites')}>
+                Cams
+              </Link>
+              ...),{' '}
+              <Link href={lp('/groups')}>
+                Telegram Porn groups
+              </Link>
+              {' '}&amp;{' '}
+              <Link href={lp('/bots')}>
+                Bots
+              </Link>
+              , and the{' '}
+              <Link href={lp('/ofsearch')}>
+                hottest Onlyfans accounts to follow
+              </Link>
+              . Enjoy! ;)
               </span>
             </p>
           </div>
-          <div className="hero-nav-row">
-            {navCards.map(renderCard)}
-          </div>
-          <div className="w-full mt-5 sm:mt-6">
-            <HeaderBanner campaigns={topBannerCampaigns} />
+          <div className="w-full">
+            <HeaderBanner campaigns={topBannerCampaigns} enlargeDesktop />
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-8 sm:pt-10 pb-16">
+      <div className="relative z-10 max-w-[1520px] mx-auto px-5 sm:px-8 lg:px-10 pt-4 sm:pt-6 pb-16">
         <div className="space-y-8 sm:space-y-10">
           {HOME_DIRECTORY_GROUPS.map((group, groupIndex) => {
             const row = group.slugs
@@ -505,6 +553,7 @@ export default function HomeExploreClient({
                     key={category.slug}
                     category={category}
                     categoryIndex={categoryIndex}
+                    featuredAdmin={featuredAdmin}
                   />,
                 ];
                 if (injectOfCard && rowIndex === 0) {
@@ -517,7 +566,7 @@ export default function HomeExploreClient({
 
             const allCells = buildCategoryCells(row);
             const sectionHeadingClass =
-              'text-white font-black tracking-[0.08em] uppercase text-sm sm:text-base mb-4';
+              'home-group-heading text-white font-black tracking-[0.08em] uppercase text-sm sm:text-base mb-4';
 
             return (
               <div
@@ -557,6 +606,7 @@ export default function HomeExploreClient({
                                 key={category.slug}
                                 category={category}
                                 categoryIndex={categoryIndex}
+                                featuredAdmin={featuredAdmin}
                               />
                             );
                           })}

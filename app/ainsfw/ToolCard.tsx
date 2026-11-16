@@ -37,6 +37,8 @@ interface ToolCardProps {
   spotlight?: boolean;
   /** Featured on Erogram row only. Try Now opens the listing website. Details stays tiny. */
   hubCta?: boolean;
+  listingHref?: string;
+  compact?: boolean;
 }
 
 const CATEGORY_BADGE: Record<string, string> = {
@@ -51,7 +53,7 @@ const CATEGORY_BADGE: Record<string, string> = {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-const VERIFIED_NAME_BADGE_CLS = 'w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0';
+const VERIFIED_NAME_BADGE_CLS = 'w-4 h-4 sm:w-5 sm:h-5 shrink-0';
 
 /** Cap a description to N words (default 18) so card previews stay short + uniform. */
 function capWords(text: string, max = 18): string {
@@ -161,7 +163,8 @@ function ToolCardPreviewVideo({
   );
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false, hubCta = false }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false, hubCta = false, listingHref, compact = false }: ToolCardProps) {
+  const detailHref = listingHref || `/ainsfw/${tool.slug}`;
   const { t } = useTranslation();
   const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
@@ -382,7 +385,9 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     </div>
   ) : null;
 
-  const cardShell = spotlight
+  const cardShell = hubCta
+    ? 'relative bg-white rounded-xl overflow-hidden h-full flex flex-col border-[3px] border-black shadow-[4px_4px_0_0_#000] transition-all duration-150 group'
+    : spotlight
     ? 'relative bg-[#ecfdf3] rounded-xl overflow-hidden h-full flex flex-col border-2 border-[#22c55e]/70 hover:border-[#16a34a] shadow-[0_10px_28px_-14px_rgba(34,197,94,0.7)] transition-all duration-150 group'
     : light
     ? 'relative bg-white rounded-xl overflow-hidden h-full flex flex-col border border-black/10 hover:border-[#22c55e]/50 shadow-sm transition-all duration-150 group'
@@ -392,14 +397,20 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     : light
     ? 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-gray-100 shrink-0'
     : 'relative w-full h-[154px] sm:h-[173px] overflow-hidden bg-[#0a0a0a] shrink-0';
-  const titleCls = spotlight || light
-    ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#15803d] transition-colors flex items-center gap-1 min-w-0'
-    : 'text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0';
-  const descCls = spotlight || light
-    ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2'
-    : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed flex-grow mb-2';
-  const reviewCountCls = spotlight || light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
-  const dividerCls = spotlight || light
+  const titleCls = hubCta
+    ? 'text-[18px] sm:text-[21px] font-black text-gray-900 mb-0.5 leading-tight flex items-center gap-1 min-w-0 overflow-visible'
+    : spotlight || light
+    ? 'text-[18px] sm:text-[21px] font-black text-gray-900 mb-0.5 leading-tight group-hover:text-[#15803d] transition-colors flex items-center gap-1 min-w-0 overflow-visible'
+    : 'text-[18px] sm:text-[21px] font-black text-white mb-0.5 leading-tight group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0 overflow-visible';
+  const descCls = hubCta
+    ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed'
+    : spotlight || light
+    ? 'text-gray-600 text-[10px] sm:text-xs line-clamp-2 leading-relaxed'
+    : 'text-white/70 text-[10px] sm:text-xs line-clamp-2 leading-relaxed';
+  const reviewCountCls = hubCta ? 'text-[9px] text-white' : spotlight || light ? 'text-[9px] text-gray-500' : 'text-[9px] text-white/50';
+  const dividerCls = hubCta
+    ? 'flex items-center justify-between gap-2 pt-1.5 border-t border-white/25 mb-2'
+    : spotlight || light
     ? 'flex items-center justify-between gap-2 pt-1.5 border-t border-[#22c55e]/20 mb-2'
     : 'flex items-center justify-between gap-2 pt-1.5 border-t border-white/10 mb-2';
   const downHeavy = score < 0;
@@ -436,7 +447,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
           transition={{ duration: 0.4, delay: index * 0.04 }}
           className="h-full"
         >
-          <Link href={`/ainsfw/${tool.slug}`} className="block h-full" onClick={handleFeaturedClick}>
+          <Link href={detailHref} className="block h-full" onClick={handleFeaturedClick}>
             <div
               ref={cardRef}
               className="group relative h-full rounded-xl overflow-hidden border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col bg-[#0a0a0a]"
@@ -491,7 +502,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
               {videoLogoOverlay}
 
               <div className="p-2.5 sm:p-3 flex flex-col flex-grow relative z-[5]">
-                <h3 className="text-xs sm:text-sm font-black text-white mb-0.5 leading-tight truncate group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0">
+                <h3 className="text-[18px] sm:text-[21px] font-black text-white mb-0.5 leading-tight group-hover:text-[#22c55e] transition-colors flex items-center gap-1 min-w-0 overflow-visible">
                   <span className="truncate">{tool.name}</span>
                   {verified && <VerifiedBadge className={VERIFIED_NAME_BADGE_CLS} tooltip={AINSFW_VERIFIED_TOOLTIP} />}
                 </h3>
@@ -604,7 +615,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 Edit
               </Link>
             ) : null}
-            <Link href={`/ainsfw/${tool.slug}`} className="flex flex-col flex-grow min-h-0">
+            <Link href={detailHref} className="flex flex-col flex-grow min-h-0">
             <div
               className={imageShell}
               onTouchStart={isVideoCard ? undefined : handleTouchStart}
@@ -652,8 +663,53 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 {verified && <VerifiedBadge className={VERIFIED_NAME_BADGE_CLS} tooltip={AINSFW_VERIFIED_TOOLTIP} />}
               </h3>
 
-              <p className={descCls}>{capWords(tool.description)}</p>
+              {!compact && (
+              <div className="flex-grow mb-2">
+                <p className={descCls}>{capWords(tool.description)}</p>
+                {hubCta && (
+                  <span className="inline-flex mt-1 px-1.5 py-0.5 bg-[#e8307e] text-white text-[10px] font-black leading-none border-2 border-black shadow-[2px_2px_0_0_#000]">
+                    {t('ainsfw.moreDetails', 'More details')}
+                  </span>
+                )}
+              </div>
+              )}
 
+              {hubCta ? (
+              <div className="flex items-stretch h-7 mb-2 border-2 border-black bg-black overflow-hidden">
+                <button
+                  onClick={(e) => handleVote(e, 'up')}
+                  title="Upvote"
+                  className={`flex items-center justify-center w-7 shrink-0 ${userVote === 'up' ? 'bg-black text-[#e8307e]' : 'bg-[#e8307e] text-white'}`}
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
+                </button>
+                <span className="flex items-center justify-center min-w-[1.75rem] px-1 text-[10px] font-black text-white">
+                  {score > 0 ? `+${score}` : score}
+                </span>
+                <button
+                  onClick={(e) => handleVote(e, 'down')}
+                  title="Downvote"
+                  className={`flex items-center justify-center w-7 shrink-0 ${userVote === 'down' ? 'bg-black text-[#e8307e]' : 'bg-[#e8307e] text-white'}`}
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20l-8-8h16z"/></svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReviewOpen}
+                  className="flex items-center gap-1 flex-1 min-w-0 justify-end px-1.5 bg-black"
+                >
+                  <AinsfwReviewStars
+                    avg={reviewAvg}
+                    size="card"
+                    filledClass="text-[#e8307e]"
+                    emptyClass="text-white/40"
+                  />
+                  <span className={reviewCountCls}>
+                    {reviews.length > 0 ? `${ainsfwReviewAverageLabel(reviewAvg)} (${reviews.length})` : '0'}
+                  </span>
+                </button>
+              </div>
+              ) : (
               <div className={dividerCls}>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={(e) => handleVote(e, 'up')} title="Upvote" className={`flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold transition-all ${upVoteCls}`}>
@@ -668,6 +724,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 </div>
                 {inlineReviews}
               </div>
+              )}
 
               {!hubCta && (
               <div className="flex items-center gap-1.5">
@@ -696,39 +753,22 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
             </div>
             </Link>
             {hubCta && (
-              <div className="flex items-center gap-1.5 px-2.5 sm:px-3 pb-2.5 sm:pb-3">
+              <div className="mt-auto px-2.5 sm:px-3 pb-2.5 sm:pb-3 pt-0.5">
                 {hubSiteIsLink ? (
                   <a
                     href={hubSiteUrl}
                     target="_blank"
                     rel="nofollow noopener noreferrer"
                     onClick={() => { void trackAinsfwToolClick(tool.slug); }}
-                    className={`${btnCls} cursor-pointer flex-1 text-center`}
+                    className="flex items-center justify-center w-full min-h-[44px] py-3 px-2 bg-[#e8307e] text-white text-[13px] sm:text-sm font-black uppercase tracking-wide whitespace-nowrap leading-none rounded-none border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-[transform,box-shadow] duration-75"
                   >
                     {ctaLabel}
                   </a>
                 ) : (
-                  <div className={`${btnCls} cursor-pointer flex-1 text-center`}>
+                  <div className="flex items-center justify-center w-full min-h-[44px] py-3 px-2 bg-[#e8307e] text-white text-[13px] sm:text-sm font-black uppercase tracking-wide whitespace-nowrap leading-none rounded-none border-[3px] border-black shadow-[4px_4px_0_0_#000]">
                     {ctaLabel}
                   </div>
                 )}
-                <Link href={`/ainsfw/${tool.slug}`} className="shrink-0 px-1.5 h-7 inline-flex items-center rounded border border-gray-300 text-[8px] font-bold uppercase tracking-tight text-gray-500 leading-none">
-                  {t('ainsfw.details', 'Details')}
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleBookmark}
-                  title={t('ainsfw.save', 'Save')}
-                  className={`shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center transition-all ${
-                    bookmarked
-                      ? 'bg-[#f43f5e]/15 border-[#f43f5e]/40 text-[#f43f5e]'
-                      : 'bg-gray-100 border-gray-200 text-gray-500 hover:text-gray-800 hover:border-gray-300'
-                  }`}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill={bookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                </button>
               </div>
             )}
           </div>

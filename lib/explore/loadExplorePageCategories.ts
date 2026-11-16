@@ -17,13 +17,15 @@ function listingImage(image?: string): string | undefined {
 }
 
 function ainsfwSite(
-  tool: Pick<AINsfwTool, 'name' | 'slug' | 'image' | 'sourceUrl'>,
+  tool: Pick<AINsfwTool, 'name' | 'slug' | 'image' | 'sourceUrl' | 'tryNowUrl'>,
   openInNewTab = false,
+  tryNowUrlOverride?: string,
 ): ExploreSite {
+  const outbound = (tryNowUrlOverride || tool.tryNowUrl || tool.sourceUrl || '').trim();
   return {
     name: tool.name,
     url: `/ainsfw/${tool.slug}`,
-    externalUrl: tool.sourceUrl,
+    ...(outbound ? { externalUrl: outbound } : {}),
     image: listingImage(tool.image),
     icon: ainsfwListIconForSlug(tool.slug),
     openInNewTab,

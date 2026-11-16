@@ -12,6 +12,7 @@ import { getTrendingCreatorStats } from '@/lib/actions/onlyfansTracking';
 import { fetchCreatorFromApify } from '@/lib/actions/submitCreator';
 import FeaturedCreatorsManager from '@/app/OF/featured/FeaturedCreatorsManager';
 import { PLACEMENTS, CORE_NETWORK_PLACEMENTS, placementToTierSlot } from '@/lib/adPlacements';
+import { BANNER_PAGES, BANNER_PAGE_LABEL } from '@/lib/bannerPages';
 
 // ── Launch placement picker, organized into the owner's mental tiers ──
 // Each entry maps to REAL placement ids from lib/adPlacements.ts (the engine's source of truth).
@@ -1976,15 +1977,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                 <label className="block text-sm font-semibold text-blue-300 mb-2">Show on pages</label>
                 <p className="text-xs text-[#666] mb-3">Leave all unchecked to show everywhere. Check specific pages to restrict.</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {([
-                    { value: 'homepage', label: 'Homepage' },
-                    { value: 'groups', label: 'Groups' },
-                    { value: 'bots', label: 'Bots' },
-                    { value: 'onlyfans', label: 'OFsearch' },
-                    { value: 'ainsfw', label: 'AI NSFW' },
-                    { value: 'articles', label: 'Articles' },
-                    { value: 'join', label: 'Join Pages' },
-                  ] as const).map((pg) => {
+                  {BANNER_PAGES.map((pg) => {
                     const checked = campForm.bannerPages.includes(pg.value);
                     return (
                       <label key={pg.value} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-colors ${checked ? 'bg-blue-500/15 border-blue-500/30 text-white' : 'bg-[#1a1a1a] border-white/5 text-[#999] hover:border-white/20'}`}>
@@ -3530,7 +3523,7 @@ export default function AdvertisersTab({ setActiveTab, initialSection = 'overvie
                               {(camp as any).bannerPages?.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                   {((camp as any).bannerPages as string[]).map((p: string) => (
-                                    <span key={p} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/5 text-[#999] border border-white/10">{p}</span>
+                                    <span key={p} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/5 text-[#999] border border-white/10">{BANNER_PAGE_LABEL[p] || p}</span>
                                   ))}
                                 </div>
                               )}

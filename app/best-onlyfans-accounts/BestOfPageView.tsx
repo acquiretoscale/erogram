@@ -10,7 +10,8 @@ import { getLocale } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, LOCALE_HREFLANG, localePath } from '@/lib/i18n';
 import { rankingCopyForSlug, rankingListSize } from '@/lib/bestOfPageContent/top50Rankings';
 import type { Locale } from '@/lib/i18n';
-import { getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getKeywordPlacementCampaigns } from '@/lib/actions/campaigns';
+import HeaderBanner from '@/components/HeaderBanner';
 import { getBestOfRankingOrganicWithClusterFill, getBestOfRankingOrganicCap } from '@/lib/actions/bestOfCreators';
 import { getFeaturedCreatorFeedItems } from '@/lib/actions/publicData';
 import { getPinnedTopFeaturedOfCreator } from '@/lib/ofsearch/pinnedTopFeaturedCreator';
@@ -269,12 +270,13 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
   const pageContent = resolveBestOfContent(slug, locale, variant);
   const label = getTagLabel(slug, page.label, locale);
 
-  const [bestOfAds, trendingFeaturedRaw, pinnedTop] = await Promise.all([
+  const [bestOfAds, trendingFeaturedRaw, pinnedTop, topBannerCampaigns] = await Promise.all([
     getKeywordPlacementCampaigns('best-of', slug, 6).catch(() => []),
     page.match === 'category' && page.categorySlug
       ? getFeaturedCreatorFeedItems(page.categorySlug).catch(() => [])
       : Promise.resolve([]),
     getPinnedTopFeaturedOfCreator(),
+    getActiveCampaigns('top-banner', { page: 'ranking-onlyfans' }).catch(() => []),
   ]);
 
   const trendingFeatured = pinnedTop
@@ -460,6 +462,9 @@ export default async function BestOfPageView({ slug, variant = 'top10' }: { slug
       <EditorialMasthead />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-16">
+        <div className="w-full mb-6">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[11px] tracking-[0.12em] uppercase mb-6" style={{ color: MUTED }}>
           <Link href={localePath('/', locale)} className="hover:opacity-70 transition-opacity">{dict.bestOnlyfans.breadcrumbHome}</Link>

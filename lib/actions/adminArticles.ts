@@ -6,6 +6,9 @@ import connectDB from '@/lib/db/mongodb';
 import { User, Article, Advertiser } from '@/lib/models';
 import { slugify } from '@/lib/utils/slugify';
 import { pingIndexNow } from '@/lib/utils/indexNow';
+import { isPublisherToken } from '@/lib/auth/publisherAccess';
+import { uploadToR2, isR2Configured } from '@/lib/r2';
+import sharp from 'sharp';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 
@@ -20,6 +23,37 @@ async function authenticateAdmin(token: string) {
     return null;
   }
   return null;
+}
+
+async function requireEditor(token: string) {
+  if (!token) throw new Error('Unauthorized');
+  if (isPublisherToken(token)) return;
+  const admin = await authenticateAdmin(token);
+  if (!admin) throw new Error('Unauthorized');
+}
+
+function revalidateArticlePaths(slug: string) {
+  revalidatePath('/blog');
+  revalidatePath('/');
+  if (slug) revalidatePath(`/blog/${slug}`);
+}
+
+async function setSingleFeatured(articleId: any, featured: boolean) {
+  const mongoose = require('mongoose');
+  const db = mongoose.connection.db;
+  if (!db) throw new Error('MongoDB connection not available');
+  const articlesCollection = db.collection('articles');
+  const ObjectId = mongoose.Types.ObjectId;
+  const mongoId = articleId instanceof ObjectId ? articleId : new ObjectId(String(articleId));
+  if (featured) {
+    await articlesCollection.updateMany(
+      { _id: { $ne: mongoId }, featured: true },
+      { $set: { featured: false } }
+    );
+    await articlesCollection.updateOne({ _id: mongoId }, { $set: { featured: true } });
+  } else {
+    await articlesCollection.updateOne({ _id: mongoId }, { $set: { featured: false } });
+  }
 }
 
 export async function getArticles(token: string) {
@@ -87,6 +121,7 @@ export async function getArticles(token: string) {
       status: article.status !== undefined && article.status !== null ? article.status : 'draft',
       blogCategory: article.blogCategory || 'adult-entertainment',
       authorSlug: article.authorSlug || 'eros',
+      featured: !!article.featured,
       tags: article.tags || [],
       publishedAt: article.publishedAt || null,
       views: article.views || 0,
@@ -146,6 +181,7 @@ export async function getArticle(token: string, id: string) {
     status: a.status || 'draft',
     blogCategory: a.blogCategory || 'adult-entertainment',
     authorSlug: a.authorSlug || 'eros',
+    featured: !!a.featured,
     tags: a.tags || [],
     publishedAt: a.publishedAt || null,
     views: a.views || 0,
@@ -177,7 +213,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
+  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, featured, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   if (!title || !content) {
     throw new Error('Title and content are required');
@@ -217,6 +253,7 @@ export async function createArticle(token: string, data: Record<string, any>) {
     twitterDescription: twitterDescription || '',
     videoBlocks: videoBlocks || [],
     ctaBlocks: ctaBlocks || [],
+    featured: !!featured && articleStatus === 'published',
   });
 
   article.status = articleStatus;
@@ -257,12 +294,17 @@ export async function createArticle(token: string, data: Record<string, any>) {
     twitterImage: twitterImage || '',
     twitterTitle: twitterTitle || '',
     twitterDescription: twitterDescription || '',
+    featured: !!featured && articleStatus === 'published',
   };
 
   await articlesCollection.updateOne(
     { _id: article._id },
     { $set: forceUpdateData }
   );
+
+  if (featured && articleStatus === 'published') {
+    await setSingleFeatured(article._id, true);
+  }
 
   await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -348,7 +390,7 @@ export async function updateArticle(token: string, id: string, data: Record<stri
 
   await connectDB();
 
-  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
+  const { title, content, excerpt, featuredImage, status, blogCategory, authorSlug, featured, tags, metaTitle, metaDescription, metaKeywords, ogImage, ogTitle, ogDescription, twitterCard, twitterImage, twitterTitle, twitterDescription, advertiserId, videoBlocks, ctaBlocks } = data;
 
   const oldArticle = await Article.findById(id);
   if (!oldArticle) throw new Error('Article not found');
@@ -404,6 +446,11 @@ export async function updateArticle(token: string, id: string, data: Record<stri
     setFields.ctaBlocks = ctaBlocks;
   }
 
+  if (featured !== undefined) {
+    const willBeLive = (status === 'published' || status === 'draft' ? status : oldArticle.status) === 'published';
+    setFields.featured = !!featured && willBeLive;
+  }
+
   if (status !== undefined && status !== null && (status === 'published' || status === 'draft')) {
     setFields.status = status;
     if (status === 'published') {
@@ -441,6 +488,10 @@ export async function updateArticle(token: string, id: string, data: Record<stri
 
   if (updateResult.matchedCount === 0) {
     throw new Error('Article not found');
+  }
+
+  if (setFields.featured) {
+    await setSingleFeatured(mongoId, true);
   }
 
   await new Promise(resolve => setTimeout(resolve, 200));
@@ -512,6 +563,23 @@ export async function updateArticle(token: string, id: string, data: Record<stri
   return JSON.parse(JSON.stringify(result));
 }
 
+export async function setFeaturedArticle(token: string, id: string, featured: boolean) {
+  await requireEditor(token);
+
+  await connectDB();
+  const article = await Article.findById(id).select('status slug featured').lean() as any;
+  if (!article) throw new Error('Article not found');
+  if (featured && article.status !== 'published') {
+    throw new Error('Publish the article before featuring it');
+  }
+
+  await setSingleFeatured(id, !!featured);
+  revalidatePath('/blog');
+  revalidatePath('/');
+  if (article.slug) revalidatePath(`/blog/${article.slug}`);
+  return { featured: !!featured };
+}
+
 export async function deleteArticle(token: string, id: string) {
   const admin = await authenticateAdmin(token);
   if (!admin) throw new Error('Unauthorized');
@@ -573,6 +641,75 @@ export async function getArticleStats(token: string) {
     totalClicks30d,
     count: articles.length,
   }));
+}
+
+export async function saveArticleFrontEdit(
+  token: string,
+  slug: string,
+  data: { title?: string; excerpt?: string; content?: string; featuredImage?: string; featured?: boolean },
+) {
+  await requireEditor(token);
+  await connectDB();
+  const article = await Article.findOne({ slug }).select('_id status featuredImage').lean() as any;
+  if (!article) throw new Error('Article not found');
+
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof data.title === 'string' && data.title.trim()) set.title = data.title.trim();
+  if (typeof data.excerpt === 'string') set.excerpt = data.excerpt;
+  if (typeof data.content === 'string' && data.content.trim()) set.content = data.content;
+  if (typeof data.featuredImage === 'string' && data.featuredImage.trim()) {
+    set.featuredImage = data.featuredImage.trim();
+    set.ogImage = data.featuredImage.trim();
+    set.twitterImage = data.featuredImage.trim();
+  }
+
+  await Article.updateOne({ _id: article._id }, { $set: set });
+
+  if (data.featured !== undefined) {
+    if (data.featured && article.status !== 'published') {
+      throw new Error('Publish the article before featuring it');
+    }
+    await setSingleFeatured(article._id, !!data.featured);
+  }
+
+  revalidateArticlePaths(slug);
+  return { ok: true, featured: data.featured };
+}
+
+export async function uploadArticleFrontImage(
+  token: string,
+  slug: string,
+  formData: FormData,
+  asMain = false,
+): Promise<{ url: string }> {
+  await requireEditor(token);
+  if (!isR2Configured()) throw new Error('Image upload is not configured');
+  const file = formData.get('file') as File | null;
+  if (!file || file.size === 0) throw new Error('No file uploaded');
+
+  await connectDB();
+  const article = await Article.findOne({ slug }).select('_id title').lean() as any;
+  if (!article) throw new Error('Article not found');
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  let webp = await sharp(buf).rotate().resize(1200, 1200, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 72 }).toBuffer();
+  if (webp.length > 90 * 1024) {
+    webp = await sharp(buf).rotate().resize(960, 960, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 58 }).toBuffer();
+  }
+
+  const safeSlug = slug.replace(/[^a-z0-9-]/gi, '').slice(0, 80) || 'article';
+  const key = `articles/${safeSlug}-${Date.now().toString(36)}.webp`;
+  const url = await uploadToR2(webp, key, 'image/webp');
+
+  if (asMain) {
+    await Article.updateOne(
+      { _id: article._id },
+      { $set: { featuredImage: url, ogImage: url, twitterImage: url, updatedAt: new Date() } },
+    );
+    revalidateArticlePaths(slug);
+  }
+
+  return { url };
 }
 
 export async function getArticleBlocks(articleId: string) {

@@ -6,6 +6,8 @@ import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/
 import RankingPageView from './RankingPageView';
 import { directoryMetaDescription, directoryPageFromSlug } from './config';
 import { loadRankingItems } from './loadRankings';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
+import { rankingBannerPage } from '@/lib/bannerPages';
 
 const MAX_TITLE_LENGTH = 68;
 const BRAND_SUFFIX_LENGTH = 15;
@@ -114,7 +116,10 @@ export function createRankingPage(slug: string) {
     const year = new Date().getFullYear();
     const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE', es: 'es-ES' };
     const month = new Date().toLocaleString(localeMap[locale] || 'en-US', { month: 'long' });
-    const items = await loadRankingItems(slug);
+    const [items, topBannerCampaigns] = await Promise.all([
+      loadRankingItems(slug),
+      getActiveCampaigns('top-banner', { page: rankingBannerPage(page.kind) }).catch(() => []),
+    ]);
 
     const ai = dict.bestAiTools || {};
     const groups = dict.bestGroups || {};
@@ -193,6 +198,7 @@ export function createRankingPage(slug: string) {
               ? groups.browseAll
               : (dict.bestOnlyfans?.browseAll || groups.browseAll)
         }
+        topBannerCampaigns={topBannerCampaigns}
       />
     );
   }

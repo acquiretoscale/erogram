@@ -10,6 +10,8 @@ type AinsfwHeaderActionsProps = {
   emailSubject?: string;
   fallbackUrl?: string;
   part?: 'all' | 'submit' | 'share';
+  submitHref?: string;
+  submitLabel?: string;
 };
 
 export default function AinsfwHeaderActions({
@@ -17,6 +19,8 @@ export default function AinsfwHeaderActions({
   emailSubject,
   fallbackUrl,
   part = 'all',
+  submitHref,
+  submitLabel,
 }: AinsfwHeaderActionsProps) {
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -34,10 +38,10 @@ export default function AinsfwHeaderActions({
       )}
       {showSubmit && (
         <Link
-          href={lp('/add/ainsfw')}
-          className={ainsfwCtaButtonClass('header')}
+          href={lp(submitHref || '/add/ainsfw')}
+          className={ainsfwCtaButtonClass('header', '!bg-[#22c55e] !border-[#86efac] !ring-[#bbf7d0] hover:!bg-[#4ade80] active:!bg-[#16a34a]')}
         >
-          {t('ainsfw.submitYourTool', 'SUBMIT YOUR TOOL')}
+          {submitLabel || t('ainsfw.submitYourTool', 'SUBMIT YOUR TOOL')}
         </Link>
       )}
     </div>

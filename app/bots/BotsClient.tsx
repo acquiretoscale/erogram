@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import BotCardSkeleton from './BotCardSkeleton';
 import BotsEditorialSeo from './BotsEditorialSeo';
 import AdvertCard from '../groups/AdvertCard';
@@ -82,13 +83,14 @@ interface BotsClientProps {
   paginationCurrentPage?: number;
   paginationTotalPages?: number;
   botsPageSize?: number;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 }
 
 function botsPageHref(page: number): string {
   return page <= 1 ? '/bots' : `/bots/page/${page}`;
 }
 
-export default function BotsClient({ initialBots, initialTopBots = [], initialAdverts, feedCampaigns: initialFeedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, allBotStats, paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16 }: BotsClientProps) {
+export default function BotsClient({ initialBots, initialTopBots = [], initialAdverts, feedCampaigns: initialFeedCampaigns = [], initialIsMobile, initialIsTelegram, initialCountry, allBotStats, paginationCurrentPage = 1, paginationTotalPages = 1, botsPageSize = 16, topBannerCampaigns = [] }: BotsClientProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedSubcategory, setSelectedSubcategory] = useState('All');
@@ -490,6 +492,10 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
             {t('bots.heroSubtitle', 'Discover the best NSFW Telegram bots — curated, verified and updated daily.')}
           </p>
         </motion.div>
+
+        <div className="w-full mb-6 sm:mb-8">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
 
         {/* Filter bar — same framework as AI NSFW: compact, centered, inline */}
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">

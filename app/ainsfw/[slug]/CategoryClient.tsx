@@ -13,6 +13,7 @@ import type { AINsfwTool } from '@/app/ainsfw/types';
 import type { FeedCampaign } from '@/app/groups/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
+import HeaderBanner from '@/components/HeaderBanner';
 
 interface Props {
   category: string;
@@ -25,6 +26,7 @@ interface Props {
   featuredHubStats: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
   topAdCampaigns?: FeedCampaign[];
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 }
 
 const CATEGORY_DESC: Record<string, string> = {
@@ -49,6 +51,7 @@ export default function CategoryClient({
   featuredHubStats,
   verifiedSlugs = [],
   topAdCampaigns = [],
+  topBannerCampaigns = [],
 }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -60,8 +63,12 @@ export default function CategoryClient({
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
       <Navbar />
 
+      <div className="relative z-10 mt-24 sm:mt-28">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-2">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
       {/* Breadcrumb */}
-      <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
+      <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <nav className="flex items-center text-xs text-gray-500 gap-1.5 min-w-0">
             <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
@@ -72,6 +79,7 @@ export default function CategoryClient({
           </nav>
           <AinsfwHeaderActions part="submit" />
         </div>
+      </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 lg:py-14">
@@ -110,6 +118,7 @@ export default function CategoryClient({
               index={i}
               initialStats={allStats[tool.slug]}
               verified={verifiedSlugs.includes(tool.slug)}
+              spotlight
             />
           ))}
         </div>

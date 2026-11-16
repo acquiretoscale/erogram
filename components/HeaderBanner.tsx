@@ -16,6 +16,8 @@ interface HeaderBannerProps {
   /** Ad-space name for click tracking. Defaults to 'top-banner'; the homepage hero passes 'homepage-hero'
    *  so its clicks show as their own line on the dashboard instead of being lumped into Top Banner. */
   placement?: string;
+  /** Homepage only: desktop caps are 40% larger (70vw / 392px). */
+  enlargeDesktop?: boolean;
 }
 
 const DEVICE_CLASS: Record<string, string> = {
@@ -28,7 +30,12 @@ const DEVICE_CLASS: Record<string, string> = {
  * Shows exactly one banner per page; a different one is picked each time the user views a page (on mount).
  * Respects bannerDevice: 'mobile' renders only on <md, 'desktop' only on md+, 'all' everywhere.
  */
-export default function HeaderBanner({ campaigns = [], className = '', placement = 'top-banner' }: HeaderBannerProps) {
+export default function HeaderBanner({
+  campaigns = [],
+  className = '',
+  placement = 'top-banner',
+  enlargeDesktop = false,
+}: HeaderBannerProps) {
   const items = useMemo(() => (campaigns ?? []).filter((c) => c?.creative), [campaigns]);
   const [currentIndex, setCurrentIndex] = useState(0);
   useEffect(() => {
@@ -66,7 +73,11 @@ export default function HeaderBanner({ campaigns = [], className = '', placement
               src={src}
               alt="Banner"
               loading="eager"
-              className="w-full h-auto md:w-auto md:h-auto md:max-w-[50vw] md:max-h-[280px]"
+              className={
+                enlargeDesktop
+                  ? 'w-full h-auto md:w-auto md:h-auto md:max-w-[70vw] md:max-h-[392px]'
+                  : 'w-full h-auto md:w-auto md:h-auto md:max-w-[50vw] md:max-h-[280px]'
+              }
               style={{ display: 'block' }}
             />
           </a>

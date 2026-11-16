@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import type { AINsfwTool } from '../types';
 import type { AINsfwFullReview } from '../reviewTypes';
@@ -21,7 +22,7 @@ import ToolDetailAdminPanel, { ToolDetailAdminFab } from '../ToolDetailAdminPane
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
 import FlameReviewSection from '@/components/FlameReviewSection';
 import { CANONICAL_BASE } from '@/lib/seo/socialMeta';
-import { VerifiedByErogramLabel } from '@/components/VerifiedBadge';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
 import { AINSFW_REVIEW_EXAMPLE_VIDEOS, getAinsfwToolPreviewVideo } from '@/lib/ainsfw/toolPreviewVideos';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
@@ -33,6 +34,83 @@ import TopAINsfwBlock from '../TopAINsfwBlock';
 import { hasProsCons, type AINsfwListingBlocks } from '../listingBlocks';
 import { getMemoryPeers } from '../memoryPeers';
 import { useLocalePath, useTranslation } from '@/lib/i18n/client';
+
+export type ListingTheme = {
+  /** primary accent hex (buttons, highlights) */
+  accent: string;
+  /** CSS custom properties injected on the page wrapper */
+  vars: Record<string, string>;
+  /** page background wrapper classes */
+  pageClass: string;
+  /** breadcrumb bar background */
+  breadcrumbBg: string;
+  /** solid card background for the info/review panels */
+  cardBg: string;
+  /** subtle border color class fragment e.g. "border-[var(--lx-accent)]/15" */
+  cardBorder: string;
+  /** submit button target + label */
+  submitHref: string;
+  submitLabel: string;
+  /** flame review color variant */
+  reviewVariant: 'green' | 'flame';
+  /** label shown in breadcrumb hub + browse section */
+  hubLabel: string;
+  hubHref: string;
+  kindLabel: string;
+  /** Build the category page href from a category string. Defaults to /ainsfw/<slug>. */
+  categoryHref?: (cat: string) => string;
+  listingHref?: (slug: string) => string;
+  /** Small logo next to the name. Falls back to the listing image. */
+  logoUrl?: string;
+};
+
+const GREEN_VARS: Record<string, string> = {
+  '--lx-accent': '#22c55e',
+  '--lx-accent-soft': '#86efac',
+  '--lx-card': '#0a1f12',
+  '--lx-breadcrumb': '#04140c',
+  '--lx-insert': '#071a10',
+  '--lx-authorbox': '#061510',
+};
+
+const RED_VARS: Record<string, string> = {
+  '--lx-accent': '#c0392f',
+  '--lx-accent-soft': '#f0a39b',
+  '--lx-card': '#1f0a0a',
+  '--lx-breadcrumb': '#140404',
+  '--lx-insert': '#1a0707',
+  '--lx-authorbox': '#150606',
+};
+
+const GREEN_THEME: ListingTheme = {
+  accent: 'var(--lx-accent)',
+  vars: GREEN_VARS,
+  pageClass: 'ainsfw-page ainsfw-bg min-h-screen text-[#f5f5f5] font-sans overflow-x-hidden',
+  breadcrumbBg: 'bg-[var(--lx-breadcrumb)]/80',
+  cardBg: 'bg-[var(--lx-card)]/85',
+  cardBorder: 'border-[var(--lx-accent)]/15',
+  submitHref: '/add/ainsfw',
+  submitLabel: 'SUBMIT YOUR TOOL',
+  reviewVariant: 'green',
+  hubLabel: 'AI NSFW Tools',
+  hubHref: '/ainsfw',
+  kindLabel: 'AI NSFW Tool',
+};
+
+export const RED_LISTING_THEME: ListingTheme = {
+  accent: 'var(--lx-accent)',
+  vars: RED_VARS,
+  pageClass: 'ainsfw-page ainsfw-bg-red min-h-screen text-[#f5f5f5] font-sans overflow-x-hidden',
+  breadcrumbBg: 'bg-[var(--lx-breadcrumb)]/80',
+  cardBg: 'bg-[var(--lx-card)]/85',
+  cardBorder: 'border-[var(--lx-accent)]/15',
+  submitHref: '/add/explore',
+  submitLabel: 'SUBMIT YOUR WEBSITE',
+  reviewVariant: 'flame',
+  hubLabel: 'Porn Websites',
+  hubHref: '/best-porn',
+  kindLabel: 'Porn Website',
+};
 
 function useAinsfwChrome() {
   const { t } = useTranslation();
@@ -68,37 +146,12 @@ interface ToolDetailClientProps {
   featuredHubStats?: Record<string, ToolStatsData>;
   verifiedSlugs?: string[];
   topAdCampaigns?: FeedCampaign[];
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
   /** Hub categories that have listings (skip empty browse links). */
   browseCategories?: string[];
+  /** Color theme + labels. Defaults to the green AI NSFW theme. */
+  theme?: ListingTheme;
 }
-
-const CATEGORY_COLOR: Record<string, string> = {
-  'AI Companion': 'bg-blue-700',
-  'Undress AI': 'bg-slate-700',
-  'AI Sexting / Chat': 'bg-emerald-700',
-  'AI NSFW Image Generator': 'bg-amber-600',
-  'AI Porn Generator': 'bg-rose-700',
-  'AI NSFW Roleplay': 'bg-zinc-800',
-  'Adult Games': 'bg-purple-800',
-};
-
-const CATEGORY_BADGE: Record<string, string> = {
-  'AI Companion': 'bg-blue-700 text-white',
-  'Undress AI': 'bg-slate-700 text-white',
-  'AI Sexting / Chat': 'bg-emerald-700 text-white',
-  'AI NSFW Image Generator': 'bg-amber-600 text-white',
-  'AI Porn Generator': 'bg-rose-700 text-white',
-  'AI NSFW Roleplay': 'bg-zinc-800 text-white',
-  'Adult Games': 'bg-purple-800 text-white',
-};
-
-const PAYMENT_ICON: Record<string, string> = {
-  'Credit Cards': '💳',
-  'Debit Cards': '💳',
-  'Crypto': '₿',
-  'PayPal': '🅿',
-  'Telegram Stars': '⭐',
-};
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
@@ -114,7 +167,7 @@ function ReviewAuthorMini({ author }: { author: AuthorProfile }) {
   const avatarSrc = getReviewAuthorAvatar(author);
   return (
     <div className="mb-8 sm:mb-10 flex items-center justify-center gap-3">
-      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden shrink-0 ring-2 ring-[#22c55e]/30">
+      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden shrink-0 ring-2 ring-[var(--lx-accent)]/30">
         <img
           src={avatarSrc}
           alt={author.name}
@@ -127,7 +180,7 @@ function ReviewAuthorMini({ author }: { author: AuthorProfile }) {
       <div className="min-w-0 text-left">
         <div className="font-bold text-sm sm:text-base text-white leading-tight">{author.name}</div>
         {author.role && (
-          <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-[#22c55e]/90 mt-0.5">{author.role}</div>
+          <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-[var(--lx-accent)]/90 mt-0.5">{author.role}</div>
         )}
       </div>
     </div>
@@ -138,10 +191,10 @@ function ReviewAuthorBox({ author }: { author: AuthorProfile }) {
   const avatarSrc = getReviewAuthorAvatar(author);
   const bio = getReviewAuthorBio(author);
   return (
-    <div className="mt-10 pt-8 border-t border-[#22c55e]/15">
-      <div className="text-[10px] font-bold tracking-[0.32em] uppercase text-[#22c55e]/80 mb-4">About the Author</div>
-      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-7 rounded-xl border border-[#22c55e]/20 bg-[#061510]/90 p-6 sm:p-8 shadow-[0_16px_48px_-24px_rgba(0,0,0,0.5)]">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shrink-0 ring-2 ring-[#22c55e]/35 shadow-[0_0_24px_rgba(34,197,94,0.12)]">
+    <div className="mt-10 pt-8 border-t border-[var(--lx-accent)]/15">
+      <div className="text-[10px] font-bold tracking-[0.32em] uppercase text-[var(--lx-accent)]/80 mb-4">About the Author</div>
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-7 rounded-xl border border-[var(--lx-accent)]/20 bg-[var(--lx-authorbox)]/90 p-6 sm:p-8 shadow-[0_16px_48px_-24px_rgba(0,0,0,0.5)]">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden shrink-0 ring-2 ring-[var(--lx-accent)]/35 shadow-[0_0_24px_rgba(34,197,94,0.12)]">
           <img
             src={avatarSrc}
             alt={author.name}
@@ -154,7 +207,7 @@ function ReviewAuthorBox({ author }: { author: AuthorProfile }) {
         <div className="flex-1 min-w-0 text-center sm:text-left">
           <div className="font-black text-xl sm:text-[22px] text-white leading-tight">{author.name}</div>
           {author.role && (
-            <div className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#22c55e] mt-1.5">{author.role}</div>
+            <div className="text-[11px] font-bold tracking-[0.18em] uppercase text-[var(--lx-accent)] mt-1.5">{author.role}</div>
           )}
           {bio && (
             <p className="text-[15px] sm:text-base leading-[1.7] text-white/70 mt-3">{bio}</p>
@@ -185,7 +238,7 @@ function AislutCryptoOffer({ className = '' }: { className?: string }) {
 
   return (
     <div className={`flex justify-center ${className}`}>
-      <div className="inline-flex flex-col items-center rounded-xl bg-[#22c55e] px-6 py-3 shadow-lg shadow-[#22c55e]/40">
+      <div className="inline-flex flex-col items-center rounded-xl bg-[var(--lx-accent)] px-6 py-3 shadow-lg shadow-[var(--lx-accent)]/40">
         <p className="text-sm font-black leading-tight text-black text-center whitespace-nowrap">
           Erogram exclusive · 25% off USDT · First 20
         </p>
@@ -224,19 +277,19 @@ function AislutPricingBlock() {
             key={tier.name}
             className={`rounded-xl border px-4 py-3.5 ${
               tier.name === 'The Aislutboss'
-                ? 'border-[#22c55e]/50 bg-[#0a1f12]'
-                : 'border-[#22c55e]/20 bg-[#071a10]'
+                ? 'border-[var(--lx-accent)]/50 bg-[var(--lx-card)]'
+                : 'border-[var(--lx-accent)]/20 bg-[var(--lx-insert)]'
             }`}
           >
             <div className="flex items-center justify-between gap-2 mb-2">
               <p className="text-sm font-black text-white">{tier.name}</p>
               {tier.bonus ? (
-                <span className="shrink-0 rounded-md bg-[#22c55e] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">
+                <span className="shrink-0 rounded-md bg-[var(--lx-accent)] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">
                   {tier.bonus}
                 </span>
               ) : null}
             </div>
-            <p className="text-sm font-bold text-[#86efac]">{tier.output}</p>
+            <p className="text-sm font-bold text-[var(--lx-accent-soft)]">{tier.output}</p>
             <p className="mt-1 text-xs text-white/60">{tier.stars} · {tier.price}</p>
           </div>
         ))}
@@ -252,7 +305,7 @@ function AislutPricingBlock() {
 }
 
 function AislutReviewIntro() {
-  const link = 'text-[#22c55e] hover:underline';
+  const link = 'text-[var(--lx-accent)] hover:underline';
   return (
     <div className="space-y-4 mb-2">
       <p className="text-gray-200 text-lg sm:text-xl leading-relaxed">
@@ -352,7 +405,7 @@ function ReviewInsertCta({
 
 function ReviewInsertBlock({ children }: { children: ReactNode }) {
   return (
-    <div className="my-8 rounded-2xl border border-[#22c55e]/25 bg-[#071a10] p-4 sm:p-5 shadow-[inset_0_1px_0_rgba(34,197,94,0.08)]">
+    <div className="my-8 rounded-2xl border border-[var(--lx-accent)]/25 bg-[var(--lx-insert)] p-4 sm:p-5 shadow-[inset_0_1px_0_rgba(34,197,94,0.08)]">
       {children}
     </div>
   );
@@ -536,7 +589,7 @@ function renderReviewParagraphs(
           <button
             type="button"
             onClick={() => opts.onPreviewImage(gallery[imgIdx])}
-            className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 hover:border-[#22c55e]/40 transition-all cursor-zoom-in"
+            className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/10 hover:border-[var(--lx-accent)]/40 transition-all cursor-zoom-in"
           >
             <img
               src={gallery[imgIdx]}
@@ -546,7 +599,7 @@ function renderReviewParagraphs(
               loading="lazy"
             />
           </button>
-          <div className="flex justify-center pt-4 mt-4 border-t border-[#22c55e]/15">
+          <div className="flex justify-center pt-4 mt-4 border-t border-[var(--lx-accent)]/15">
             <ReviewInsertCta
               toolName={tool.name}
               onVisit={opts.onVisit}
@@ -591,8 +644,8 @@ function ReviewGlossary({
   if (items.length === 0) return null;
 
   return (
-    <nav aria-label="Review glossary" className="mb-8 rounded-2xl border border-[#22c55e]/20 bg-[#0a1f12]/60 p-5">
-      <p className="text-[#22c55e] text-xs font-black uppercase tracking-[0.2em] mb-4">Glossary · Quick Access</p>
+    <nav aria-label="Review glossary" className="mb-8 rounded-2xl border border-[var(--lx-accent)]/20 bg-[var(--lx-card)]/60 p-5">
+      <p className="text-[var(--lx-accent)] text-xs font-black uppercase tracking-[0.2em] mb-4">Glossary · Quick Access</p>
       <ul className="space-y-2">
         {items.map((item) => {
           const id = reviewSectionId(toolSlug, item.heading);
@@ -601,7 +654,7 @@ function ReviewGlossary({
               <button
                 type="button"
                 onClick={() => scrollToReviewSection(id)}
-                className="block w-full text-left rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/10 px-3 py-2 text-sm font-bold text-[#86efac] hover:bg-[#22c55e]/20 transition-colors"
+                className="block w-full text-left rounded-lg border border-[var(--lx-accent)]/25 bg-[var(--lx-accent)]/10 px-3 py-2 text-sm font-bold text-[var(--lx-accent-soft)] hover:bg-[var(--lx-accent)]/20 transition-colors"
               >
                 {item.heading}
               </button>
@@ -613,7 +666,7 @@ function ReviewGlossary({
   );
 }
 
-export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], browseCategories }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], topBannerCampaigns = [], browseCategories, theme = GREEN_THEME }: ToolDetailClientProps) {
   const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
   const visitLabel = tool.ctaText?.trim() || '';
   const placeholder = '/assets/image.jpg';
@@ -727,20 +780,16 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const reviewAvg = reviews.length > 0
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : 0;
-  const btnColor = CATEGORY_COLOR[tool.category] || 'bg-gray-700';
-  const catBadge = CATEGORY_BADGE[tool.category] || 'bg-gray-700 text-white';
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
-  const reviewGallery = gallery;
+  const coverPreview =
+    tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/')) ? tool.image : '';
+  const reviewGallery = coverPreview
+    ? [coverPreview, ...gallery.filter((src) => src !== coverPreview)]
+    : gallery;
   const reviewInsertGallery = tool.slug === 'aislutbot-ai-nude-generator' ? [] : reviewGallery;
   const previewVideo = getAinsfwToolPreviewVideo(tool.slug, initialStats?.previewVideoUrl);
-  const reviewInsertCtx = useRef<ReviewInsertCtx>({ galleryIdx: 0, paragraphCount: 0, exampleVideoIdx: 0 });
+  const reviewInsertCtx: ReviewInsertCtx = { galleryIdx: 0, paragraphCount: 0, exampleVideoIdx: 0 };
   const exampleVideos = AINSFW_REVIEW_EXAMPLE_VIDEOS[tool.slug];
-
-  if (fullReview) {
-    reviewInsertCtx.current.galleryIdx = 0;
-    reviewInsertCtx.current.paragraphCount = 0;
-    reviewInsertCtx.current.exampleVideoIdx = 0;
-  }
 
   const reviewInsertOpts = {
     onVisit: handleVisit,
@@ -751,18 +800,26 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   };
 
   return (
-    <div className="ainsfw-page ainsfw-bg min-h-screen text-[#f5f5f5] font-sans overflow-x-hidden">
-      <Navbar />
+    <div className={theme.pageClass} style={theme.vars as React.CSSProperties}>
+      <Navbar accent={theme === GREEN_THEME ? undefined : theme.vars['--lx-accent']} />
 
+      <div className="relative z-10 mt-24 sm:mt-28">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-2">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
       {/* Breadcrumb */}
-      <div className="relative z-10 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24 sm:mt-28">
+      <div className={`px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[var(--lx-accent)]/15 ${theme.breadcrumbBg} backdrop-blur-xl`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <nav className="flex items-center flex-wrap text-xs text-gray-500 gap-1.5 min-w-0">
             <Link href={lp('/')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.home', 'Home')}</Link>
             <span className="shrink-0">/</span>
-            <Link href={lp('/ainsfw')} className="hover:text-white transition-colors shrink-0">{t('ainsfw.breadcrumbHub', 'AI NSFW Tools')}</Link>
-            <span className="shrink-0">/</span>
-            <Link href={lp(`/ainsfw/${categoryToSlug(tool.category)}`)} className="text-gray-400 hover:text-white transition-colors truncate max-w-[120px]">{catLabel(tool.category)}</Link>
+            <Link href={lp(theme.hubHref)} className="hover:text-white transition-colors shrink-0">{theme.hubLabel}</Link>
+            {theme.hubHref !== '/ainsfw' && (
+              <>
+                <span className="shrink-0">/</span>
+                <Link href={lp(theme.categoryHref ? theme.categoryHref(tool.category) : `/ainsfw/${categoryToSlug(tool.category)}`)} className="text-gray-400 hover:text-white transition-colors truncate max-w-[120px]">{catLabel(tool.category)}</Link>
+              </>
+            )}
             <span className="shrink-0">/</span>
             <span className="text-white font-semibold truncate max-w-[140px] sm:max-w-[180px]">{tool.name}</span>
           </nav>
@@ -774,7 +831,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
               title={bookmarked ? 'Bookmarked' : 'Bookmark this page'}
               className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all ${
                 bookmarked
-                  ? 'bg-[#22c55e] border-[#22c55e] text-black shadow-lg shadow-[#22c55e]/25'
+                  ? 'bg-[var(--lx-accent)] border-[var(--lx-accent)] text-black shadow-lg shadow-[var(--lx-accent)]/25'
                   : 'bg-white/[0.06] border-white/[0.12] text-gray-400 hover:text-white hover:border-white/25 hover:bg-white/[0.1]'
               }`}
             >
@@ -782,156 +839,171 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
               </svg>
             </button>
-            <AinsfwHeaderActions
-              part="submit"
-              shareText={`Check out ${tool.name} on Erogram`}
-              emailSubject={`${tool.name} - AI NSFW Tool on Erogram`}
-              fallbackUrl={`${CANONICAL_BASE}/ainsfw/${tool.slug}`}
-            />
           </div>
         </div>
+      </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
 
-          {/* Left sticky column */}
-          <div className="lg:col-span-4 lg:sticky lg:top-28">
+          {/* Logo + main image */}
+          <div className="lg:col-span-4 lg:row-start-1">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-gray-100 ring-2 ring-[#22c55e]/25 shrink-0">
-                  <img
-                    src={imageSrc}
-                    alt={`${tool.name} logo`}
-                    title={imageHoverTitle}
-                    className="w-full h-full object-cover"
-                    onError={() => setImageSrc(placeholder)}
-                  />
-                </div>
-                <span className="truncate min-w-0">{tool.name}</span>
-                {showVerified && <VerifiedByErogramLabel size="detail" />}
-              </h1>
-
-              {/* Tool image card */}
-              <div className="bg-[#0a1f12]/85 rounded-2xl border border-[#22c55e]/15 shadow-2xl overflow-hidden mb-4">
-                {previewVideo ? (
-                  <div className="px-4 pt-4 pb-4 flex justify-center lg:block">
-                    <div className="w-[60vw] max-w-[60vw] flex-none mx-auto lg:w-full lg:max-w-none">
-                      <ToolPreviewVideoBlock
-                        mp4={previewVideo.mp4}
-                        poster={previewVideo.poster}
-                        toolName={tool.name}
-                        toolCategory={tool.category}
-                        posterAlt={pickTagHashtagAlt(tool.tags, 0)}
-                        onVisit={handleVisit}
-                        isRedirecting={isRedirecting}
-                        categoryBadge={
-                          <AinsfwVideoListingBadge
-                            src={imageSrc}
-                            alt={pickTagHashtagAlt(tool.tags, 0)}
-                            title={imageHoverTitle}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg"
-                          />
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative w-full aspect-square bg-gray-100">
+              <div className="mb-3">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                  <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-[var(--lx-accent)]/25 shrink-0">
                     <img
-                      src={imageSrc}
-                      alt={pickTagHashtagAlt(tool.tags, 0)}
+                      src={theme.logoUrl || imageSrc}
+                      alt={`${tool.name} logo`}
                       title={imageHoverTitle}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      onError={() => setImageSrc(placeholder)}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
                     />
-                    <div className="absolute top-3 left-3">
-                      <span className={`${catBadge} text-xs font-black px-2 py-1 rounded border border-black/20 uppercase tracking-wider`}>
-                        {catLabel(tool.category)}
-                      </span>
-                    </div>
                   </div>
-                )}
-
-                {!previewVideo && (
-                <div className="px-4 pt-3">
-                  <button
-                    type="button"
-                    onClick={handleVisit}
-                    disabled={isRedirecting}
-                    className={ainsfwCtaButtonClass('md', 'w-full')}
-                  >
-                    {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
-                  </button>
+                  <h1 className="text-xl sm:text-2xl font-black text-white leading-tight min-w-0 flex-1 flex items-center gap-2">
+                    <span className="truncate">{tool.name}</span>
+                    {showVerified && <VerifiedBadge className="w-6 h-6 sm:w-7 sm:h-7" />}
+                  </h1>
                 </div>
-                )}
-
-                {/* Quick stats grid */}
-                <div className="p-4 grid grid-cols-2 gap-2">
-                  <div className="bg-white/5 rounded-xl border border-white/10 p-2.5 text-center">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">{t('ainsfw.plan', 'Plan')}</div>
-                    <div className="text-xs font-bold text-white leading-tight">{tool.subscription}</div>
-                  </div>
-                  <div className="bg-white/5 rounded-xl border border-white/10 p-2.5 text-center">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-0.5">{t('ainsfw.vendor', 'Vendor')}</div>
-                    <div className="text-xs font-bold text-white truncate leading-tight">{tool.vendor}</div>
-                  </div>
-                  <div className="col-span-2 bg-white/5 rounded-xl border border-white/10 p-2.5">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">{t('ainsfw.accepts', 'Accepts')}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {tool.payment.length > 0 ? tool.payment.map((p) => (
-                        <span key={p} className="inline-flex items-center gap-1 bg-white/10 border border-white/20 rounded px-2 py-0.5 text-[10px] font-black text-white">
-                          {PAYMENT_ICON[p] || '💰'} {p}
-                        </span>
-                      )) : (
-                        <span className="text-xs text-gray-400">{t('ainsfw.notSpecified', 'Not specified')}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleVisit}
+                  disabled={isRedirecting}
+                  className="w-full inline-flex items-center justify-center h-12 px-4 rounded-md bg-[#facc15] text-black font-black uppercase tracking-wide text-xs border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => document.getElementById('tool-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="w-full flex items-center justify-center gap-2 mb-4 py-3 rounded-xl border border-[#22c55e]/20 bg-[#0a1f12]/85 hover:bg-[#22c55e]/10 transition-colors"
-                aria-label={`See all ${reviews.length} reviews`}
-              >
-                {reviews.length > 0 && (
-                  <AinsfwReviewStars
-                    avg={reviewAvg}
-                    size="detail"
-                    filledClass="text-[#22c55e]"
-                    emptyClass="text-gray-600"
-                  />
-                )}
-                <span className="text-base font-bold text-[#22c55e]">
-                  {reviewsLabel(reviews.length)}
-                </span>
-              </button>
+              {previewVideo && (
+                <div className="mb-4 flex justify-center lg:block">
+                  <div className="w-[60vw] max-w-[60vw] flex-none mx-auto lg:w-full lg:max-w-none">
+                    <ToolPreviewVideoBlock
+                      mp4={previewVideo.mp4}
+                      poster={previewVideo.poster}
+                      toolName={tool.name}
+                      toolCategory={tool.category}
+                      posterAlt={pickTagHashtagAlt(tool.tags, 0)}
+                      onVisit={handleVisit}
+                      isRedirecting={isRedirecting}
+                      categoryBadge={
+                        <AinsfwVideoListingBadge
+                          src={imageSrc}
+                          alt={pickTagHashtagAlt(tool.tags, 0)}
+                          title={imageHoverTitle}
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg"
+                        />
+                      }
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* Vote + Score row */}
+              {(reviewGallery.length > 0 || galleryLoading) && (
+                <div className="mb-4 lg:hidden">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Preview of {tool.name}</h3>
+                  {galleryLoading && reviewGallery.length === 0 ? (
+                    <div className="flex gap-1.5 overflow-hidden">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="w-14 h-14 shrink-0 rounded-lg bg-white/5 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {reviewGallery.map((src, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxSrc(src)}
+                          className="relative w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-[#1a1a1a] border border-white/10 snap-start cursor-zoom-in"
+                          aria-label={`Preview image ${i + 1} of ${tool.name}`}
+                        >
+                          <img
+                            src={src}
+                            alt={pickTagHashtagAlt(tool.tags, i)}
+                            title={imageHoverTitle}
+                            className="w-full h-full object-cover"
+                            loading={i < 4 ? 'eager' : 'lazy'}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </div>
+
+          {/* Desktop preview gallery — same row as the main image */}
+          {reviewGallery.length > 0 && (
+            <div className="hidden lg:block lg:col-span-8 lg:row-start-1">
+              <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">Preview of {tool.name}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {reviewGallery.map((src, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLightboxSrc(src)}
+                    className="relative aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/5 hover:border-white/20 transition-all group cursor-zoom-in"
+                  >
+                    <img
+                      src={src}
+                      alt={pickTagHashtagAlt(tool.tags, i)}
+                      title={imageHoverTitle}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Votes + share — under the image on desktop */}
+          <div className="lg:col-span-4 lg:row-start-2 lg:sticky lg:top-28">
+            <div>
               <div className="flex items-center gap-2 mb-4">
                 <button
+                  type="button"
+                  onClick={() => document.getElementById('tool-reviews')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="flex items-center justify-center gap-1.5 min-w-0 flex-1 h-10 px-2 rounded-xl border border-[var(--lx-accent)]/20 bg-[var(--lx-card)]/85 hover:bg-[var(--lx-accent)]/10 transition-colors"
+                  aria-label={`See all ${reviews.length} reviews`}
+                >
+                  {reviews.length > 0 && (
+                    <AinsfwReviewStars
+                      avg={reviewAvg}
+                      size="detail"
+                      filledClass="text-[var(--lx-accent)]"
+                      emptyClass="text-gray-600"
+                    />
+                  )}
+                  <span className="text-sm font-bold text-[var(--lx-accent)] truncate">
+                    {reviewsLabel(reviews.length)}
+                  </span>
+                </button>
+                <button
                   onClick={() => handleVote('up')}
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl border font-black text-sm transition-all ${
+                  className={`flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border font-black text-sm transition-all ${
                     userVote === 'up' ? 'bg-green-500 text-white border-green-400' : 'bg-white/10 text-white/70 border-white/15 hover:bg-green-500/20 hover:text-green-300'
                   }`}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 8H4z"/></svg>
                 </button>
-                <span className={`flex-1 text-center text-sm font-black py-2.5 rounded-xl border ${
+                <span className={`w-12 shrink-0 text-center text-sm font-black py-2 rounded-xl border ${
                   score > 0 ? 'bg-green-500/20 text-green-300 border-green-500/30' : score < 0 ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-white/10 text-gray-300 border-white/15'
                 }`}>
                   {score > 0 ? `+${score}` : score}
                 </span>
                 <button
                   onClick={() => handleVote('down')}
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl border font-black text-sm transition-all ${
+                  className={`flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border font-black text-sm transition-all ${
                     userVote === 'down' ? 'bg-red-500 text-white border-red-400' : 'bg-white/10 text-white/70 border-white/15 hover:bg-red-500/20 hover:text-red-300'
                   }`}
                 >
@@ -944,8 +1016,8 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 {listingCategoryPlacementsForDisplay(tool).map((cat) => (
                   <Link
                     key={cat}
-                    href={lp(`/ainsfw/${categoryToSlug(cat)}`)}
-                    className="bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200 hover:bg-white/15 hover:border-[#22c55e]/40 hover:text-[#22c55e] transition-all"
+                    href={lp(theme.categoryHref ? theme.categoryHref(cat) : `/ainsfw/${categoryToSlug(cat)}`)}
+                    className="bg-white/10 border border-white/15 rounded px-2 py-0.5 text-[10px] font-black text-gray-200 hover:bg-white/15 hover:border-[var(--lx-accent)]/40 hover:text-[var(--lx-accent)] transition-all"
                   >
                     {catLabel(cat)}
                   </Link>
@@ -960,70 +1032,16 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   fallbackUrl={`${CANONICAL_BASE}/ainsfw/${tool.slug}`}
                 />
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Right column */}
-          <div className="lg:col-span-8">
+          {/* Description + review — below logo/image on desktop */}
+          <div className="lg:col-span-8 lg:row-start-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              {previewVideo && (
-                <h3 className="hidden lg:flex items-center min-h-14 mb-3 text-sm font-black text-gray-400 uppercase tracking-widest">
-                  Preview of {tool.name}
-                </h3>
-              )}
-
-              {/* Screenshot Gallery — shown first on both mobile and desktop */}
-              {(reviewGallery.length > 0 || galleryLoading) && (
-                <div className={`mb-8${previewVideo ? ' lg:pt-4' : ''}`}>
-                  <h3 className={`text-sm font-black text-gray-400 uppercase tracking-widest mb-3${previewVideo ? ' lg:hidden' : ''}`}>Preview of {tool.name}</h3>
-                  {galleryLoading && reviewGallery.length === 0 ? (
-                    <div className="grid grid-cols-3 gap-2">
-                      {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="aspect-video rounded-xl bg-white/5 animate-pulse" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {reviewGallery.map((src, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setLightboxSrc(src)}
-                          className="relative aspect-video rounded-xl overflow-hidden bg-[#1a1a1a] border border-white/5 hover:border-white/20 transition-all group cursor-zoom-in"
-                        >
-                          <img
-                            src={src}
-                            alt={pickTagHashtagAlt(tool.tags, i)}
-                            title={imageHoverTitle}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            loading="lazy"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Title + text */}
-              {(tool.sourceUrl || tool.tryNowUrl) ? (
-                <a
-                  href={tool.sourceUrl || tool.tryNowUrl}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-block text-gray-400 text-sm mb-2 hover:text-[#22c55e] transition-colors"
-                >
-                  {tool.vendor}
-                </a>
-              ) : (
-                <p className="text-gray-400 text-sm mb-2">{tool.vendor}</p>
-              )}
-
               {/* Star rating if any */}
               {reviews.length > 0 && (
                 <button
@@ -1035,7 +1053,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   <AinsfwReviewStars
                     avg={reviewAvg}
                     size="detail"
-                    filledClass="text-[#22c55e]"
+                    filledClass="text-[var(--lx-accent)]"
                     emptyClass="text-gray-600"
                   />
                   <span className="text-gray-400 text-sm">{reviewAvg}/5 · {reviewsLabel(reviews.length)}</span>
@@ -1070,7 +1088,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                             href={peer.homepage}
                             target="_blank"
                             rel="nofollow noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[#22c55e] font-semibold hover:underline"
+                            className="inline-flex items-center gap-1 text-[var(--lx-accent)] font-semibold hover:underline"
                           >
                             {peer.peer}
                             <span aria-hidden className="text-[10px] opacity-70">↗</span>
@@ -1086,7 +1104,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 <button
                   onClick={handleVisit}
                   disabled={isRedirecting}
-                  className={ainsfwCtaButtonClass('full', 'max-w-md')}
+                  className="inline-flex items-center justify-center h-12 px-4 rounded-md bg-[#facc15] text-black font-black uppercase tracking-wide text-xs border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
                 </button>
@@ -1101,7 +1119,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 return (
                   <Link
                     href={`/blog/${article.slug}`}
-                    className="block mb-8 group rounded-2xl border border-[#22c55e]/25 bg-[#0a1f12]/90 overflow-hidden hover:border-[#22c55e]/50 hover:shadow-[0_20px_50px_-24px_rgba(34,197,94,0.45)] transition-all shadow-lg"
+                    className="block mb-8 group rounded-2xl border border-[var(--lx-accent)]/25 bg-[var(--lx-card)]/90 overflow-hidden hover:border-[var(--lx-accent)]/50 hover:shadow-[0_20px_50px_-24px_rgba(34,197,94,0.45)] transition-all shadow-lg"
                   >
                     <div className="flex flex-col sm:flex-row">
                       <div className="relative w-full sm:w-56 md:w-64 aspect-[16/10] sm:aspect-auto sm:min-h-[168px] shrink-0 bg-[#111]">
@@ -1112,24 +1130,24 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                           loading="lazy"
                           decoding="async"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#0a1f12]/80 sm:block hidden pointer-events-none" aria-hidden />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[var(--lx-card)]/80 sm:block hidden pointer-events-none" aria-hidden />
                       </div>
-                      <div className="p-4 sm:p-5 flex flex-col justify-center min-w-0 flex-1 border-t sm:border-t-0 sm:border-l border-[#22c55e]/15">
+                      <div className="p-4 sm:p-5 flex flex-col justify-center min-w-0 flex-1 border-t sm:border-t-0 sm:border-l border-[var(--lx-accent)]/15">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#22c55e] text-black text-[9px] font-black uppercase tracking-[0.14em]">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--lx-accent)] text-black text-[9px] font-black uppercase tracking-[0.14em]">
                             Editorial Article
                           </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#22c55e]/80">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lx-accent)]/80">
                             Erogram Blog
                           </span>
                         </div>
                         <p className="text-[11px] font-bold uppercase tracking-wide text-white/45 mb-1.5">
                           Featuring {tool.name}
                         </p>
-                        <h3 className="text-base sm:text-lg font-black text-white leading-snug group-hover:text-[#22c55e] transition-colors line-clamp-2 mb-3">
+                        <h3 className="text-base sm:text-lg font-black text-white leading-snug group-hover:text-[var(--lx-accent)] transition-colors line-clamp-2 mb-3">
                           {article.title}
                         </h3>
-                        <span className="inline-flex items-center gap-1.5 text-sm font-black text-[#22c55e] group-hover:gap-2.5 transition-all">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-black text-[var(--lx-accent)] group-hover:gap-2.5 transition-all">
                           Read the full article
                           <span aria-hidden>→</span>
                         </span>
@@ -1141,7 +1159,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
 
               {fullReview && (
                 <section className="mt-16 sm:mt-20 mb-10 scroll-mt-28">
-                  <div className="rounded-2xl border border-[#22c55e]/20 bg-[#0a1f12]/90 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.55)] px-5 sm:px-8 lg:px-10 py-10 sm:py-12">
+                  <div className="rounded-2xl border border-[var(--lx-accent)]/20 bg-[var(--lx-card)]/90 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.55)] px-5 sm:px-8 lg:px-10 py-10 sm:py-12">
                     <div className="text-center mb-8 sm:mb-10">
                       <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white leading-[0.95] tracking-tight">
                         Erogram Review
@@ -1164,7 +1182,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                       <div className="space-y-4 mb-2">
                         {renderReviewParagraphs(
                           fullReview.sections[0].body.split(/\n\n+/).filter(Boolean),
-                          reviewInsertCtx.current,
+                          reviewInsertCtx,
                           reviewInsertGallery,
                           tool,
                           {
@@ -1192,7 +1210,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                         <div className="space-y-3">
                           {renderReviewParagraphs(
                             item.body.split(/\n\n+/).filter(Boolean),
-                          reviewInsertCtx.current,
+                          reviewInsertCtx,
                           reviewInsertGallery,
                           tool,
                           {
@@ -1256,7 +1274,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                           <div className="space-y-3">
                             {renderReviewParagraphs(
                               section.body.split(/\n\n+/).filter(Boolean),
-                              reviewInsertCtx.current,
+                              reviewInsertCtx,
                               reviewInsertGallery,
                               tool,
                               {
@@ -1287,17 +1305,32 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                   <button
                     onClick={handleVisit}
                     disabled={isRedirecting}
-                    className={ainsfwCtaButtonClass('full', 'max-w-md')}
+                    className="inline-flex items-center justify-center h-12 px-4 rounded-md bg-[#facc15] text-black font-black uppercase tracking-wide text-xs border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
                   </button>
                 </div>
               )}
 
+              {featuredHubTools.length > 0 && (
+                <TopAINsfwBlock
+                  tools={featuredHubTools}
+                  featuredHubSlugs={featuredHubSlugs}
+                  allStats={featuredHubStats}
+                  onVoteChange={handleFeaturedVoteChange}
+                  verifiedSlugs={verifiedSlugs}
+                  topAdCampaigns={topAdCampaigns}
+                  heading={`Other ${tool.category} Alternatives to ${tool.name} you might like.`}
+                  showGetFeatured={false}
+                  listingHref={theme.listingHref}
+                  tone={theme.reviewVariant === 'flame' ? 'red' : 'green'}
+                />
+              )}
+
               <div id="tool-reviews" className="scroll-mt-28">
               <FlameReviewSection
                 entityName={tool.name}
-                variant="green"
+                variant={theme.reviewVariant}
                 reviews={reviews.map((r) => ({
                   authorName: r.authorName,
                   authorAvatar: r.authorAvatar,
@@ -1313,17 +1346,6 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
               />
               </div>
 
-              {featuredHubTools.length > 0 && (
-                <TopAINsfwBlock
-                  tools={featuredHubTools}
-                  featuredHubSlugs={featuredHubSlugs}
-                  allStats={featuredHubStats}
-                  onVoteChange={handleFeaturedVoteChange}
-                  verifiedSlugs={verifiedSlugs}
-                  topAdCampaigns={topAdCampaigns}
-                />
-              )}
-
             </motion.div>
           </div>
         </div>
@@ -1336,11 +1358,11 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                 <h2 className="text-xl sm:text-2xl font-black text-white">{t('ainsfw.articlesTitle', 'AI NSFW Articles & Guides')}</h2>
                 <p className="text-gray-400 text-sm">{t('ainsfw.articlesSub', 'In-depth reviews, comparisons and how-tos')}</p>
               </div>
-              <Link href={lp('/blog/category/ai-nsfw')} className="text-xs font-bold text-[#22c55e] hover:underline">{t('ainsfw.allAiArticles', 'All AI articles →')}</Link>
+              <Link href={lp('/blog')} className="text-xs font-bold text-[var(--lx-accent)] hover:underline">{t('ainsfw.allAiArticles', 'All AI articles →')}</Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {aiArticles.map((article, i) => (
-                <Link key={i} href={`/blog/${article.slug}`} className="group block bg-[#111] rounded-xl border border-white/10 overflow-hidden hover:border-[#22c55e]/50 transition-all">
+                <Link key={i} href={`/blog/${article.slug}`} className="group block bg-[#111] rounded-xl border border-white/10 overflow-hidden hover:border-[var(--lx-accent)]/50 transition-all">
                   {article.featuredImage ? (
                     <img
                       src={article.featuredImage}
@@ -1352,8 +1374,8 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     <div className="w-full h-28 bg-gradient-to-br from-[#1a2a1f] to-black" />
                   )}
                   <div className="p-3">
-                    <div className="text-[10px] font-black tracking-[1px] uppercase text-[#22c55e] mb-1">AI NSFW</div>
-                    <h4 className="font-bold text-sm leading-tight group-hover:text-[#22c55e] line-clamp-2">{article.title}</h4>
+                    <div className="text-[10px] font-black tracking-[1px] uppercase text-[var(--lx-accent)] mb-1">AI NSFW</div>
+                    <h4 className="font-bold text-sm leading-tight group-hover:text-[var(--lx-accent)] line-clamp-2">{article.title}</h4>
                     {article.excerpt && (
                       <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">{article.excerpt}</p>
                     )}
@@ -1372,7 +1394,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
               <Link
                 key={cat}
                 href={lp(`/ainsfw/${categoryToSlug(cat)}`)}
-                className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/15 text-sm font-black hover:bg-white/15 hover:border-[#22c55e]/40 transition-all"
+                className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/15 text-sm font-black hover:bg-white/15 hover:border-[var(--lx-accent)]/40 transition-all"
               >
                 {catLabel(cat)}
               </Link>

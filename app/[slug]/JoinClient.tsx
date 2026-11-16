@@ -332,7 +332,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       .then(() => setViewCount((v) => v + 1))
       .catch(() => {});
 
-    getActiveCampaigns('top-banner', { page: 'join' })
+    getActiveCampaigns('top-banner', { page: type === 'group' ? 'group' : 'bot' })
       .catch(() => [] as any[])
       .then((banners) => {
         const b = banners as any[];
@@ -621,37 +621,36 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       {/* Navigation */}
       <Navbar />
 
-      {/* Breadcrumb — below fixed nav, above banner & hero image */}
-      <div className="relative z-20 bg-[#0d1117] border-b border-white/10 pt-[82px]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <nav aria-label="Breadcrumb">
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-xs sm:text-sm text-gray-400">
-              <li>
-                <Link href={lp('/')} className="hover:text-white transition-colors">
-                  {t('slug.home')}
-                </Link>
-              </li>
-              <li aria-hidden="true" className="text-gray-600 select-none">/</li>
-              <li>
-                <Link
-                  href={lp(type === 'group' ? '/groups' : '/bots')}
-                  className="hover:text-white transition-colors"
-                >
-                  {type === 'group' ? t('nav.groups') : t('nav.bots')}
-                </Link>
-              </li>
-              <li aria-hidden="true" className="text-gray-600 select-none">/</li>
-              <li className="text-white font-medium truncate max-w-[50vw] sm:max-w-md" aria-current="page">
-                {entity.name}
-              </li>
-            </ol>
-          </nav>
+      <div className="relative z-20 pt-[82px]">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
+          <HeaderBanner campaigns={liveTopBanners} />
         </div>
-      </div>
-
-      {/* Top banner: same size as Groups/Bots, minimal spacing */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
-        <HeaderBanner campaigns={liveTopBanners} />
+        <div className="bg-[#0d1117] border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+            <nav aria-label="Breadcrumb">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 list-none p-0 m-0 text-xs sm:text-sm text-gray-400">
+                <li>
+                  <Link href={lp('/')} className="hover:text-white transition-colors">
+                    {t('slug.home')}
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-gray-600 select-none">/</li>
+                <li>
+                  <Link
+                    href={lp(type === 'group' ? '/groups' : '/bots')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {type === 'group' ? t('nav.groups') : t('nav.bots')}
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-gray-600 select-none">/</li>
+                <li className="text-white font-medium truncate max-w-[50vw] sm:max-w-md" aria-current="page">
+                  {entity.name}
+                </li>
+              </ol>
+            </nav>
+          </div>
+        </div>
       </div>
 
       {/* Popup Advert Modal */}
@@ -826,7 +825,7 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
               className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl relative overflow-hidden group"
             >
               {/* Image Container */}
-              <div className="aspect-square rounded-2xl overflow-hidden bg-white/5 relative mb-6 shadow-inner border border-white/5">
+              <div className="mx-auto lg:mx-0 w-32 sm:w-40 lg:w-full aspect-square rounded-2xl overflow-hidden bg-white/5 relative mb-6 shadow-inner border border-white/5">
                 {entity.linkedCreatorSlug ? (
                   <img
                     src={groupImage}

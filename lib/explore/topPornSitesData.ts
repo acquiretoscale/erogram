@@ -18,7 +18,14 @@ export type ExploreSite = {
   featured?: boolean;
 };
 
-export type ExploreCategory = { slug: string; title: string; description: string; sites: ExploreSite[] };
+export type ExploreCategory = {
+  slug: string;
+  title: string;
+  description: string;
+  sites: ExploreSite[];
+  /** Homepage card badge set by admin. */
+  badgeLabel?: string;
+};
 
 function premiumPornExploreSites(): ExploreSite[] {
   const premium = exploreSitesFromListings(

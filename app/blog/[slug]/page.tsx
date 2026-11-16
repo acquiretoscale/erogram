@@ -3,7 +3,6 @@ import { notFound, redirect } from 'next/navigation';
 import BlogArticleClient from './BlogArticleClient';
 import { getBlogArticleBySlug, getRelatedBlogArticles } from '@/lib/actions/blog';
 import { getArticleComments } from '@/lib/actions/articleComments';
-import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
@@ -74,7 +73,6 @@ export default async function BlogArticlePage({ params }: PageProps) {
     getRelatedBlogArticles(article._id, article.blogCategory, 3),
     getArticleComments(article.slug),
   ]);
-  const cat = BLOG_CATEGORY_MAP[article.blogCategory];
   const url = `${BASE_URL}/blog/${article.slug}`;
   const imageUrl = toAbsoluteUrl(article.ogImage || article.featuredImage);
 
@@ -98,7 +96,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
         }
       : {}),
     ...(imageUrl ? { image: { '@type': 'ImageObject', url: imageUrl } } : {}),
-    ...(cat ? { articleSection: cat.name } : {}),
+    ...(article.tags?.length ? { keywords: article.tags.join(', ') } : {}),
     ...(commentsData.count > 0
       ? {
           commentCount: commentsData.count,
@@ -118,8 +116,7 @@ export default async function BlogArticlePage({ params }: PageProps) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
       { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE_URL}/blog` },
-      ...(cat ? [{ '@type': 'ListItem', position: 3, name: cat.name, item: `${BASE_URL}/blog/category/${cat.slug}` }] : []),
-      { '@type': 'ListItem', position: cat ? 4 : 3, name: article.title, item: url },
+      { '@type': 'ListItem', position: 3, name: article.title, item: url },
     ],
   };
 

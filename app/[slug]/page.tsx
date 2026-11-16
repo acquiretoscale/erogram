@@ -683,7 +683,7 @@ export default async function JoinPage({ params }: PageProps) {
   const exploreListing = await resolveExploreListingByRootSlug(slug);
   if (exploreListing) {
     const visitRel = await resolveExploreListingVisitRel(exploreListing.slug);
-    const alternatives = getExploreSiteAlternatives(exploreListing.slug, 8, exploreListing.categorySlug);
+    const alternatives = getExploreSiteAlternatives(exploreListing.slug, 40, exploreListing.categorySlug);
     const pageUrl = `${BASE_URL}${exploreSiteListingPath(exploreListing.slug, exploreListing.categorySlug)}`;
     const pageName = `${exploreListing.name} - Visit Porn Website`;
     const breadcrumbJsonLd = {
@@ -807,7 +807,7 @@ export default async function JoinPage({ params }: PageProps) {
 
     const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages, joinFeaturedOfCreator] = await Promise.all([
       getActiveCampaigns('join-cta'),
-      getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
+      getActiveCampaigns('top-banner', { page: 'group', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getRankingCoverImages(),
@@ -918,7 +918,7 @@ export default async function JoinPage({ params }: PageProps) {
 
     const [joinCtaCampaigns2, topBannerCampaigns2, vaultTeaser2, featuredCreators2, botStatsData] = await Promise.all([
       getActiveCampaigns('join-cta'),
-      getActiveCampaigns('top-banner', { page: 'join', device: isMobile ? 'mobile' : 'desktop' }),
+      getActiveCampaigns('top-banner', { page: 'bot', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getBotStats(bot.slug),

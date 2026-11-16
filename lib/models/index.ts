@@ -232,6 +232,8 @@ export const articleSchema = new Schema(
     blogCategory: { type: String, default: 'adult-entertainment' },
     // Byline author — references an Author doc by slug (see authorSchema). Default 'eros'.
     authorSlug: { type: String, default: 'eros' },
+    // Manual pick for the /blog "Must Read" cover. Not auto-newest.
+    featured: { type: Boolean, default: false, index: true },
     // SEO Metadata fields
     metaTitle: { type: String, required: false },
     metaDescription: { type: String, required: false },
@@ -606,7 +608,8 @@ export const campaignSchema = new Schema(
     premiumGroupIds: { type: [Schema.Types.ObjectId], default: [] },
     // Social proof indicator shown on the card: 'none' | 'visiting' | 'clicks' | 'trending' | 'random'
     socialProof: { type: String, enum: ['none', 'visiting', 'clicks', 'trending', 'random'], default: 'random' },
-    // Banner page targeting: which pages this top-banner/homepage-hero appears on (empty = all pages)
+    // Banner page targeting: which surfaces this top-banner/homepage-hero appears on (empty = all).
+    // See lib/bannerPages.ts (hub vs individual vs ranking families).
     bannerPages: { type: [String], default: [] },
     // Banner device targeting: 'all' | 'mobile' | 'desktop'
     bannerDevice: { type: String, enum: ['all', 'mobile', 'desktop'], default: 'all' },
@@ -1386,6 +1389,9 @@ if (!AINsfwToolStats.schema.path('editorialReview')) {
     },
   });
 }
+if (!AINsfwToolStats.schema.path('verified')) {
+  AINsfwToolStats.schema.add({ verified: { type: Boolean } });
+}
 
 // AI NSFW Submission — user-submitted AI tools for listing
 const ainsfwSubmissionSchema = new Schema(
@@ -1569,6 +1575,22 @@ const exploreCategoryOrderSchema = new Schema(
 
 export const ExploreCategoryOrder =
   models.ExploreCategoryOrder || model('ExploreCategoryOrder', exploreCategoryOrderSchema);
+
+/** Homepage card #1 placement chosen by admin. kind matches the card's directory kind. */
+const homeFeaturedSlotSchema = new Schema(
+  {
+    cardSlug: { type: String, required: true, unique: true },
+    kind: { type: String, enum: ['ainsfw', 'bots', 'explore'] },
+    listingKey: { type: String, default: '' },
+    listingName: { type: String, default: '' },
+    imageUrl: { type: String, default: '' },
+    badgeText: { type: String, default: '' },
+  },
+  { timestamps: true },
+);
+
+export const HomeFeaturedSlot =
+  models.HomeFeaturedSlot || model('HomeFeaturedSlot', homeFeaturedSlotSchema);
 
 const linkExchangePartnerSchema = new Schema(
   {

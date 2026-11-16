@@ -91,7 +91,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
         .map((t) => mergeToolContent(t, allStats[t.slug]))
     : [];
   const categoryOptions = getPopulatedHubCategories(displayTools, []);
-  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug));
+  const verifiedSlugs = getVerifiedSlugs(paidSubmissions.map((t) => t.slug), allStats);
   const featuredCampaignMap: Record<string, string> = {};
   for (const f of featuredInfos) {
     if (f.campaignId) featuredCampaignMap[f.slug] = f.campaignId;

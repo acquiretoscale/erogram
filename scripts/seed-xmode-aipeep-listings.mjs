@@ -174,13 +174,13 @@ const listings = [
   {
     slug: AIPEEP_SLUG,
     submission: {
-      name: 'AI Peep',
+      name: 'AI Peeps',
       slug: AIPEEP_SLUG,
       category: 'AI NSFW Chat',
       categories: ['AI NSFW Chat', 'AI Characters'],
-      vendor: 'AI Peep',
+      vendor: 'AI Peeps',
       description:
-        'AI Peep is a browser-based NSFW character hub where each Peep ships with its own voice, gallery, and roleplay hook. Visitors pick a persona from the carousel, switch between SFW and NSFW modes, and jump into free chat, image and video generation, or a custom Peep builder without installing an app. The product leans into character depth: bios, scene text, and gallery tabs that make each listing feel like a mini profile rather than a generic chatbot tile.',
+        'AI Peeps is a browser-based NSFW character hub where each Peep ships with its own voice, gallery, and roleplay hook. Visitors pick a persona from the carousel, switch between SFW and NSFW modes, and jump into free chat, image and video generation, or a custom Peep builder without installing an app. The product leans into character depth: bios, scene text, and gallery tabs that make each listing feel like a mini profile rather than a generic chatbot tile.',
       image: aipeepCover,
       websiteUrl: 'https://aipeeps.com',
       tags: ['ai nsfw chat', 'ai characters', 'uncensored ai chat', 'ai roleplay', 'nsfw ai images'],

@@ -5,6 +5,7 @@ import mongoose, { type PipelineStage } from 'mongoose';
 import connectDB from '@/lib/db/mongodb';
 import { User, Campaign, CampaignClick, CampaignImpressionDaily, Advertiser, Article, Group, Bot, OnlyFansCreator, TrendingOFCreator } from '@/lib/models';
 import { BOOST_WEIGHT, getAdKeywordAliasesForPage } from '@/lib/adPlacements';
+import { bannerPageMatchValues } from '@/lib/bannerPages';
 import { getExpiredOFAgencyTargets } from '@/lib/actions/onlyfansTracking';
 import { dropExpiredOFAgencyAds } from '@/lib/ofExpiry';
 import { campaignNotExpired } from '@/lib/campaignDates';
@@ -482,7 +483,7 @@ export async function deleteCampaign(token: string, id: string) {
  * Called from server components at render time — no auth needed.
  *
  * @param slot    Campaign slot name (e.g. 'top-banner', 'homepage-hero')
- * @param opts.page   Page identifier for banner targeting (e.g. 'groups', 'bots', 'homepage').
+ * @param opts.page   Page identifier for banner targeting (e.g. 'groups', 'group', 'ainsfw-page').
  *                    When provided, only campaigns targeting that page (or with no page restriction) are returned.
  * @param opts.device 'mobile' | 'desktop' — filters by bannerDevice field.
  */
@@ -547,7 +548,7 @@ async function computeActiveCampaigns(
       $or: [
         { bannerPages: { $size: 0 } },
         { bannerPages: { $exists: false } },
-        { bannerPages: opts.page },
+        { bannerPages: { $in: bannerPageMatchValues(opts.page) } },
       ],
     });
   }

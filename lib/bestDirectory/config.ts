@@ -183,10 +183,6 @@ export const HOME_DIRECTORY_GROUPS: { heading?: string; slugs: string[] }[] = [
     slugs: ['best-ainsfw', 'best-ai-girlfriend', 'best-undress-ai', 'best-ai-porn-generator'],
   },
   {
-    heading: 'Best Telegram bots',
-    slugs: ['best-undress-telegram-bots', 'best-ai-girlfriend-telegram-bots'],
-  },
-  {
     heading: 'Best Adult websites',
     slugs: [
       'best-vr-porn',
@@ -197,6 +193,10 @@ export const HOME_DIRECTORY_GROUPS: { heading?: string; slugs: string[] }[] = [
       'best-asian-porn-sites',
       'best-uncensored-jav-porn-websites',
     ],
+  },
+  {
+    heading: 'Best Telegram bots',
+    slugs: ['best-undress-telegram-bots', 'best-ai-girlfriend-telegram-bots'],
   },
 ];
 

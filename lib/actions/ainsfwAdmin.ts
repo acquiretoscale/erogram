@@ -10,6 +10,7 @@ import { uploadToR2, isR2Configured, deleteFromR2 } from '@/lib/r2';
 import { AINSFW_GALLERY } from '@/app/ainsfw/galleryMap';
 import { resolveGallery, type ToolContentFields } from '@/lib/ainsfw/toolContent';
 import { invertToolSlug } from '@/app/ainsfw/data';
+import { toolHasLongFormReview } from '@/app/ainsfw/fullReviews';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
 const JPG_QUALITY = 95;
@@ -93,6 +94,7 @@ export async function adminLoadToolEditor(token: string, slug: string): Promise<
   featuredDuration: FeaturedDurationChoice;
   reviewIntro: string;
   reviewBlocks: EditorReviewBlock[];
+  verified: boolean;
 }> {
   await requireAdmin(token);
   const [stats, submission] = await Promise.all([
@@ -121,12 +123,15 @@ export async function adminLoadToolEditor(token: string, slug: string): Promise<
         .map((h: any) => ({ title: String(h?.title || ''), body: String(h?.body || '') }))
         .filter((h: EditorReviewBlock) => h.title || h.body)
     : [];
+  const verifiedFlag = stats?.verified;
+  const verified = verifiedFlag === true || (verifiedFlag !== false && toolHasLongFormReview(slug, stats?.editorialReview));
   return {
     categories,
     ctaText: stats?.ctaText || '',
     featuredDuration,
     reviewIntro: stats?.editorialReview?.shortDescription || '',
     reviewBlocks: highlights,
+    verified,
   };
 }
 
@@ -144,6 +149,7 @@ export async function adminSaveToolContent(
     featuredDuration?: FeaturedDurationChoice;
     reviewIntro?: string;
     reviewBlocks?: EditorReviewBlock[];
+    verified?: boolean;
   },
 ): Promise<ToolContentFields & { upvotes: number; downvotes: number }> {
   await requireAdmin(token);
@@ -181,6 +187,8 @@ export async function adminSaveToolContent(
       set.editorialReview = { shortDescription: intro, featureHighlights: blocks };
     }
   }
+
+  if (data.verified !== undefined) set.verified = !!data.verified;
 
   if (data.featuredDuration) {
     if (data.featuredDuration === 'off') {

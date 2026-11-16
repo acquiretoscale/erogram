@@ -1,8 +1,7 @@
 import connectDB from '@/lib/db/mongodb';
 import { Group, Article, Bot, AINsfwSubmission } from '@/lib/models';
-import { categories, categorySlug, GROUPS_FEED_PAGE_SIZE } from '@/app/groups/constants';
+import { categories, categorySlug } from '@/app/groups/constants';
 import { AI_NSFW_TOOLS, CATEGORY_SLUGS, categoryToSlug, toolSlug } from '@/app/ainsfw/data';
-import { BLOG_CATEGORY_SLUGS } from '@/lib/blog/categories';
 import { EXPLORE_CATEGORIES } from '@/lib/explore/topPornSitesData';
 import { SEARCH_DISCOVERY_ORIGIN } from '@/lib/seo/publicOrigins';
 
@@ -51,7 +50,7 @@ export async function GET() {
   try {
     await connectDB();
 
-    const [groups, groupFeedCount, bots, articles, ainsfwSubmissions, dbCountries, categoryCounts, countryCounts] =
+    const [groups, bots, articles, ainsfwSubmissions, dbCountries, categoryCounts, countryCounts] =
       await Promise.all([
         Group.find({
           status: 'approved',
@@ -60,12 +59,6 @@ export async function GET() {
         })
           .select('slug updatedAt')
           .lean(),
-        Group.countDocuments({
-          status: 'approved',
-          isAdvertisement: { $ne: true },
-          premiumOnly: { $ne: true },
-          category: { $ne: 'Hentai' },
-        }),
         Bot.find({ status: 'approved' }).select('slug updatedAt').lean(),
         Article.find({ status: 'published' }).select('slug updatedAt publishedAt').lean(),
         AINsfwSubmission.find({ status: 'approved', paymentStatus: 'paid' })
@@ -103,18 +96,14 @@ export async function GET() {
     seen.add('/');
 
     push('/groups', 'daily', 0.9);
-    const groupPages = Math.ceil(groupFeedCount / GROUPS_FEED_PAGE_SIZE);
-    for (let p = 2; p <= groupPages; p++) {
-      push(`/groups/page/${p}`, 'weekly', 0.5);
-    }
     push('/bots', 'daily', 0.9);
     push('/blog', 'daily', 0.9);
-    push('/ainsfw', 'daily', 0.9);
+    push('/ainsfw', 'daily', 1.0);
     push('/best-porn', 'daily', 0.9);
 
     for (const g of groups as any[]) {
       if (!g.slug) continue;
-      push(`/${g.slug}`, 'daily', 0.6, g.updatedAt);
+      push(`/${g.slug}`, 'monthly', 0.6, g.updatedAt);
     }
 
     for (const b of bots as any[]) {
@@ -136,17 +125,17 @@ export async function GET() {
       push(`/ainsfw/${categoryToSlug(name)}`, 'weekly', 0.8);
     }
 
-    push('/best-telegram-groups', 'weekly', 0.8);
+    push('/best-telegram-groups', 'daily', 0.8);
     for (const cat of categories) {
       if (cat === 'All' || !activeCategories.has(cat)) continue;
-      push(`/best-telegram-groups/${categorySlug(cat)}`, 'weekly', 0.8);
+      push(`/best-telegram-groups/${categorySlug(cat)}`, 'daily', 0.8);
     }
 
     for (const c of countries) {
       if (!activeCountries.has(c)) continue;
       push(
         `/best-telegram-groups/country/${encodeURIComponent(c.toLowerCase())}`,
-        'weekly',
+        'daily',
         0.8,
       );
     }
@@ -162,9 +151,6 @@ export async function GET() {
     for (const a of articles as any[]) {
       if (!a.slug) continue;
       push(`/blog/${a.slug}`, 'daily', 0.9, a.updatedAt || a.publishedAt);
-    }
-    for (const slug of BLOG_CATEGORY_SLUGS) {
-      push(`/blog/category/${slug}`, 'weekly', 0.8);
     }
 
     push('/best-onlyfans-accounts', 'weekly', 0.8);
@@ -182,7 +168,7 @@ export async function GET() {
       entry('/groups', 'daily', 0.9),
       entry('/bots', 'daily', 0.9),
       entry('/blog', 'daily', 0.9),
-      entry('/ainsfw', 'daily', 0.9),
+      entry('/ainsfw', 'daily', 1.0),
       entry('/best-porn', 'daily', 0.9),
     ]);
     return new Response(fallback, {

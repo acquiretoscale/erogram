@@ -400,8 +400,25 @@ export function isPaidClientTool(slug: string): boolean {
   return (AINSFW_PAID_CLIENT_SLUGS as readonly string[]).includes(slug);
 }
 
-export function isVerifiedTool(slug: string): boolean {
-  return isPaidClientTool(slug);
+type EditorialBits = {
+  shortDescription?: string;
+  featureHighlights?: { title?: string; body?: string }[];
+};
+
+export function toolHasLongFormReview(slug: string, editorial?: EditorialBits | null): boolean {
+  if (AINSFW_FULL_REVIEWS[slug]) return true;
+  if (editorial?.shortDescription?.trim()) return true;
+  return (editorial?.featureHighlights || []).some((h) => !!(h.title?.trim() && h.body?.trim()));
+}
+
+export function isVerifiedTool(
+  slug: string,
+  editorial?: EditorialBits | null,
+  verifiedFlag?: boolean,
+): boolean {
+  if (verifiedFlag === true) return true;
+  if (verifiedFlag === false) return false;
+  return toolHasLongFormReview(slug, editorial);
 }
 
 /** Paid submission slugs that have an editorial full review (verified badge). */
@@ -413,11 +430,21 @@ export function getVerifiedPaidSlugs(paidSlugs: Iterable<string>): string[] {
   return out;
 }
 
-/** All tool slugs that should show the verified badge on cards and detail pages. VERIFIED = PAID. */
-export function getVerifiedSlugs(paidSubmissionSlugs?: Iterable<string>): string[] {
-  const out = new Set<string>(AINSFW_PAID_CLIENT_SLUGS);
-  if (paidSubmissionSlugs) {
-    for (const slug of paidSubmissionSlugs) out.add(slug);
+/** Tool slugs that should show the verified badge. Manual flag wins; otherwise long-form review. */
+export function getVerifiedSlugs(
+  _paidSubmissionSlugs?: Iterable<string>,
+  statsBySlug?: Record<string, { editorialReview?: EditorialBits; verified?: boolean }>,
+): string[] {
+  const out = new Set<string>();
+  for (const slug of Object.keys(AINSFW_FULL_REVIEWS)) {
+    if (statsBySlug?.[slug]?.verified !== false) out.add(slug);
+  }
+  if (statsBySlug) {
+    for (const [slug, stats] of Object.entries(statsBySlug)) {
+      if (stats.verified === true) out.add(slug);
+      else if (stats.verified === false) out.delete(slug);
+      else if (toolHasLongFormReview(slug, stats.editorialReview)) out.add(slug);
+    }
   }
   return [...out];
 }

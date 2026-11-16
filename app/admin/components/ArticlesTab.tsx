@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, getArticleStats } from '@/lib/actions/adminArticles';
+import { getArticles, getArticle, createArticle, updateArticle, deleteArticle, getArticleStats, setFeaturedArticle } from '@/lib/actions/adminArticles';
 import { getAdvertisersDashboard } from '@/lib/actions/adminCampaigns';
 import { getAuthors, upsertAuthor, deleteAuthor, type AuthorProfile } from '@/lib/actions/authors';
 import { compressImage } from '@/lib/utils/compressImage';
@@ -31,6 +31,7 @@ export default function ArticlesTab() {
         authorSlug: 'eros',
         tags: [] as string[],
         advertiserId: '',
+        featured: false,
         metaTitle: '',
         metaDescription: '',
         metaKeywords: '',
@@ -118,6 +119,7 @@ export default function ArticlesTab() {
             authorSlug: 'eros',
             tags: [],
             advertiserId: '',
+            featured: false,
             metaTitle: '',
             metaDescription: '',
             metaKeywords: '',
@@ -148,6 +150,7 @@ export default function ArticlesTab() {
             authorSlug: article.authorSlug || 'eros',
             tags: article.tags || [],
             advertiserId: article.advertiserId || '',
+            featured: !!article.featured,
             metaTitle: article.metaTitle || '',
             metaDescription: article.metaDescription || '',
             metaKeywords: article.metaKeywords || '',
@@ -178,6 +181,7 @@ export default function ArticlesTab() {
                 status: (full.status === 'published' || full.status === 'draft') ? full.status : prev.status,
                 blogCategory: full.blogCategory || prev.blogCategory,
                 authorSlug: full.authorSlug || prev.authorSlug,
+                featured: !!full.featured,
                 tags: full.tags || prev.tags,
                 advertiserId: full.advertiserId || prev.advertiserId,
                 metaTitle: full.metaTitle ?? prev.metaTitle,
@@ -236,6 +240,24 @@ export default function ArticlesTab() {
     const handleSaveDraft = () => doSave('draft');
     const handlePublish = () => doSave('published');
     const handleSave = () => doSave();
+
+    const handleToggleFeatured = async (article: any) => {
+        if (article.status !== 'published' && !article.featured) {
+            alert('Publish the article first, then feature it.');
+            return;
+        }
+        const next = !article.featured;
+        try {
+            const token = localStorage.getItem('token') || '';
+            await setFeaturedArticle(token, article._id, next);
+            setArticles((prev) => prev.map((a) => ({
+                ...a,
+                featured: next ? a._id === article._id : (a._id === article._id ? false : a.featured),
+            })));
+        } catch (err: any) {
+            alert(err.message || 'Failed to update featured');
+        }
+    };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this article?')) return;
@@ -477,6 +499,16 @@ export default function ArticlesTab() {
                                 </select>
                                 <p className="text-xs text-[#666] mt-1">Same advertisers as in Advertisers section (optional).</p>
                             </div>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={!!articleData.featured}
+                                    onChange={(e) => setArticleData({ ...articleData, featured: e.target.checked })}
+                                    className="h-4 w-4 rounded border-white/20 bg-[#1a1a1a] text-[#b31b1b] focus:ring-[#b31b1b]"
+                                />
+                                <span className="text-sm font-semibold text-white">Featured on the blog</span>
+                            </label>
 
                             <div>
                                 <label className="block text-sm font-semibold text-[#999] mb-2">Featured Image</label>
@@ -786,6 +818,7 @@ export default function ArticlesTab() {
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase cursor-pointer hover:text-white transition-colors select-none" onClick={() => handleSort('published')}>
                                         Published {sortBy === 'published' && (sortOrder === 'asc' ? '↑' : '↓')}
                                     </th>
+                                    <th className="px-4 py-3 text-left font-bold text-xs uppercase">Featured</th>
                                     <th className="px-4 py-3 text-left font-bold text-xs uppercase">Actions</th>
                                 </tr>
                             </thead>
@@ -819,6 +852,16 @@ export default function ArticlesTab() {
                                         </td>
                                         <td className="px-4 py-3 text-[#999] text-xs whitespace-nowrap">
                                             {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleFeatured(article)}
+                                                className={`text-xs font-bold ${article.featured ? 'text-amber-400' : 'text-[#666] hover:text-white'}`}
+                                                title={article.featured ? 'Remove from featured' : 'Set as featured'}
+                                            >
+                                                {article.featured ? '★ Featured' : '☆ Set'}
+                                            </button>
                                         </td>
                                         <td className="px-4 py-3">
                                             <button onClick={() => handleEdit(article)} className="text-blue-400 hover:underline mr-2">Edit</button>

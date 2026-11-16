@@ -71,6 +71,7 @@ export default function ToolDetailAdminPanel({
   );
   const [ctaText, setCtaText] = useState(tool.ctaText || '');
   const [featuredDuration, setFeaturedDuration] = useState<FeaturedDurationChoice>('off');
+  const [verified, setVerified] = useState(false);
   const [reviewIntro, setReviewIntro] = useState('');
   const [reviewBlocks, setReviewBlocks] = useState<{ title: string; body: string }[]>([{ title: '', body: '' }]);
   const [editorReady, setEditorReady] = useState(false);
@@ -89,6 +90,7 @@ export default function ToolDetailAdminPanel({
         if (editor.categories.length) setCategories(editor.categories.slice(0, 6));
         setCtaText(editor.ctaText || '');
         setFeaturedDuration(editor.featuredDuration || 'off');
+        setVerified(!!editor.verified);
         setReviewIntro(editor.reviewIntro || '');
         setReviewBlocks(editor.reviewBlocks.length ? editor.reviewBlocks : [{ title: '', body: '' }]);
         setEditorReady(true);
@@ -116,7 +118,7 @@ export default function ToolDetailAdminPanel({
         upvotes,
         downvotes,
         imageOverride: cover,
-        ...(editorReady ? { categories, ctaText, featuredDuration, reviewIntro, reviewBlocks } : {}),
+        ...(editorReady ? { categories, ctaText, featuredDuration, reviewIntro, reviewBlocks, verified } : {}),
       });
       onDescriptionChange(description);
       onTryNowUrlChange(tryNowUrl.trim());
@@ -402,6 +404,26 @@ export default function ToolDetailAdminPanel({
             placeholder="Leave empty for the usual button"
             className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-[#22c55e]/50"
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Verified</label>
+          <div className="flex flex-wrap gap-1.5">
+            {([true, false] as const).map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                onClick={() => setVerified(on)}
+                className={`rounded px-2.5 py-1 text-[11px] font-black border ${
+                  verified === on
+                    ? 'bg-[#22c55e] text-black border-[#22c55e]'
+                    : 'bg-white/10 text-gray-200 border-white/15'
+                }`}
+              >
+                {on ? 'On' : 'Off'}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>

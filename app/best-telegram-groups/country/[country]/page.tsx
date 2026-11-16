@@ -7,6 +7,8 @@ import connectDB from '@/lib/db/mongodb';
 import { Group, BestGroupPick } from '@/lib/models';
 import { countries } from '@/app/groups/constants';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
+import { getActiveCampaigns } from '@/lib/actions/campaigns';
 import BestGroupRankCard from '@/app/best-telegram-groups/BestGroupRankCard';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 import { getLocale } from '@/lib/i18n/server';
@@ -174,11 +176,16 @@ export default async function BestCountryGroupsPage({ params }: PageProps) {
         }));
     }
 
+    const topBannerCampaigns = await getActiveCampaigns('top-banner', { page: 'ranking-groups' }).catch(() => []);
+
     return (
         <div className="min-h-screen bg-[#111111] text-[#f5f5f5]">
             <Navbar />
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+                <div className="w-full mb-8">
+                    <HeaderBanner campaigns={topBannerCampaigns} />
+                </div>
                 {/* Article Header */}
                 <header className="text-center mb-16">
                     <div className="inline-block px-4 py-1 bg-[#b31b1b]/20 text-[#b31b1b] rounded-full text-sm font-bold mb-4 border border-[#b31b1b]/30">

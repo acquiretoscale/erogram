@@ -4,7 +4,7 @@ import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from './BotsClient';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { getAllBotStats } from '@/lib/actions/botVotes';
 import { getLocale, getPathname } from '@/lib/i18n/server';
@@ -185,12 +185,13 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
 
   // Device detection removed: reading headers() opts the page out of static ISR
   // (same fix as the AINSFW hub). The client refreshes device-specific ads after load.
-  const [bots, totalBots, adverts, feedCampaigns, topBots] = await Promise.all([
+  const [bots, totalBots, adverts, feedCampaigns, topBots, topBannerCampaigns] = await Promise.all([
     getBots(BOTS_FEED_PAGE_SIZE, skip),
     getApprovedBotsCount(),
     getAdverts(),
     getActiveFeedCampaigns('bots'),
     getTopBots(10),
+    getActiveCampaigns('top-banner', { page: 'bots' }).catch(() => []),
   ]);
 
   const paginationTotalPages = Math.max(1, Math.ceil(totalBots / BOTS_FEED_PAGE_SIZE));
@@ -219,6 +220,7 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
           paginationCurrentPage={currentPage}
           paginationTotalPages={paginationTotalPages}
           botsPageSize={BOTS_FEED_PAGE_SIZE}
+          topBannerCampaigns={topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : []}
         />
       </ErrorBoundary>
     </>

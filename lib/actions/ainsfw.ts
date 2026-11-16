@@ -84,6 +84,7 @@ function docToStats(doc: any, admin = false): ToolStatsData {
             : [],
         }
       : undefined,
+    verified: typeof doc.verified === 'boolean' ? doc.verified : undefined,
     reviews: filtered.map((r: any) => mapReview(r, admin)),
   };
 }
@@ -106,6 +107,7 @@ export interface ToolStatsData {
   featuredDuration?: string;
   featuredExpiresAt?: string;
   editorialReview?: { shortDescription?: string; featureHighlights?: { title: string; body: string }[] };
+  verified?: boolean;
   reviews: ToolReviewData[];
 }
 

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import type { BlogCard as BlogCardData } from '@/lib/actions/blog';
-import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 
 const PLACEHOLDER_TINTS = [
   'linear-gradient(135deg, #2a0d1a 0%, #1a0710 55%, #0c0508 100%)',
@@ -29,8 +28,7 @@ export default function BlogCardItem({
   index?: number;
   horizontal?: boolean;
 }) {
-  const cat = BLOG_CATEGORY_MAP[article.blogCategory];
-  const eyebrow = cat?.eyebrow || 'Feature';
+  const eyebrow = article.tags?.[0] || '';
   const tint = PLACEHOLDER_TINTS[index % PLACEHOLDER_TINTS.length];
 
   const metaBar = (
@@ -78,7 +76,7 @@ export default function BlogCardItem({
       <article className="group overflow-hidden rounded-[10px] border border-black/[0.08] bg-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)] transition-all duration-300 hover:border-[#c0392f]/30 hover:shadow-[0_16px_36px_-14px_rgba(0,0,0,0.35)]">
         <Link href={`/blog/${article.slug}`} className="flex flex-col sm:flex-row">
           <div
-            className="relative aspect-[16/10] w-full shrink-0 overflow-hidden sm:aspect-auto sm:h-auto sm:w-[220px] md:w-[260px]"
+            className="relative h-28 w-full shrink-0 overflow-hidden sm:h-auto sm:aspect-auto sm:w-[220px] md:w-[260px]"
             style={{ background: tint }}
           >
             {article.featuredImage ? (
@@ -94,11 +92,13 @@ export default function BlogCardItem({
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex flex-1 flex-col px-5 py-4 sm:px-6 sm:py-5">
-              <div className="mb-2 text-[10px] font-bold tracking-[0.3em] uppercase text-[#c0392f]">
+            <div className="flex flex-1 flex-col px-4 py-3 sm:px-6 sm:py-5">
+              {eyebrow ? (
+              <div className="mb-1 text-[10px] font-bold tracking-[0.3em] uppercase text-[#c0392f]">
                 {eyebrow}
               </div>
-              <h3 className="mb-2 font-sans text-[1.05rem] font-bold leading-[1.3] tracking-tight text-[#0f0c0a] transition-colors group-hover:text-[#c0392f] sm:text-[1.15rem]">
+              ) : null}
+              <h3 className="mb-1 font-sans text-[1.05rem] font-bold leading-[1.25] tracking-tight text-[#0f0c0a] transition-colors group-hover:text-[#c0392f] sm:mb-2 sm:text-[1.15rem]">
                 {article.title}
               </h3>
               {article.excerpt && (
@@ -136,10 +136,11 @@ export default function BlogCardItem({
 
         {/* Text card */}
         <div className="flex-1 flex flex-col px-5 pt-5 pb-0 bg-white">
-          {/* Eyebrow */}
+          {eyebrow ? (
           <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#c0392f] mb-3">
             {eyebrow}
           </div>
+          ) : null}
 
           {/* Title — bold sans, modern */}
           <h3 className="font-sans font-bold text-[1.05rem] leading-[1.3] tracking-tight text-[#0f0c0a] mb-3 transition-colors group-hover:text-[#c0392f]">

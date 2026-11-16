@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
+import HeaderBanner from '@/components/HeaderBanner';
 import Footer from '@/components/Footer';
 import BestToolRankCard from '@/app/best-ai-nsfw-tools/BestToolRankCard';
 import type { Top10ToolRankEntry } from '@/lib/bestAiNsfwTools/top10List';
@@ -24,6 +25,7 @@ type Props = {
   wantMore: string;
   wantMoreDesc: string;
   browseAll: string;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 };
 
 export default function BestAiToolsCategoryClient({
@@ -42,6 +44,7 @@ export default function BestAiToolsCategoryClient({
   wantMore,
   wantMoreDesc,
   browseAll,
+  topBannerCampaigns = [],
 }: Props) {
   const h1Prefix =
     ranking.length > 0
@@ -60,7 +63,11 @@ export default function BestAiToolsCategoryClient({
     <div className="ainsfw-page ainsfw-bg min-h-screen text-white">
       <Navbar />
 
-      <div className="relative z-10 px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl mt-24">
+      <div className="relative z-10 mt-24">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-2">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
+      <div className="px-4 sm:px-6 py-3 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl">
         <div className="max-w-5xl mx-auto">
           <nav className="flex items-center flex-wrap text-xs text-gray-500 gap-1.5">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
@@ -72,6 +79,7 @@ export default function BestAiToolsCategoryClient({
             <span className="text-white font-semibold">{pageLabel}</span>
           </nav>
         </div>
+      </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 lg:py-14">

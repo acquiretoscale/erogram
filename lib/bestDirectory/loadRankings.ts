@@ -10,12 +10,13 @@ import { EXPLORE_CATEGORIES, type ExploreCategory, type ExploreSite } from '@/li
 import { exploreSiteKey } from '@/lib/explore/siteKey';
 import { ainsfwListIconForSlug } from '@/lib/explore/siteIconDomain';
 import connectDB from '@/lib/db/mongodb';
-import { Bot } from '@/lib/models';
+import { Bot, HomeFeaturedSlot } from '@/lib/models';
 import { loadExplorePageCategories } from '@/lib/explore/loadExplorePageCategories';
 import {
   DIRECTORY_PAGES,
   RANKING_LIMIT,
   directoryPageFromSlug,
+  type DirectoryKind,
   type DirectoryPageConfig,
 } from './config';
 import type { DirectoryRankItem } from './types';
@@ -79,11 +80,12 @@ function rankTools(
     .slice(0, limit);
 }
 
-function toolToSite(tool: AINsfwTool, image?: string): ExploreSite {
+function toolToSite(tool: AINsfwTool, image?: string, tryNowUrlOverride?: string): ExploreSite {
+  const outbound = (tryNowUrlOverride || tool.tryNowUrl || tool.sourceUrl || '').trim();
   return {
     name: tool.name,
     url: `/ainsfw/${tool.slug}`,
-    externalUrl: tool.sourceUrl,
+    ...(outbound ? { externalUrl: outbound } : {}),
     image: listingImage(image || tool.image),
     icon: ainsfwListIconForSlug(tool.slug),
   };
@@ -152,7 +154,7 @@ function pinHomeSitesFirst(
   pageSlug: string,
   sites: ExploreSite[],
   tools: AINsfwTool[],
-  stats: Record<string, { upvotes?: number; imageOverride?: string }>,
+  stats: Record<string, { upvotes?: number; imageOverride?: string; tryNowUrlOverride?: string }>,
 ): ExploreSite[] {
   const patterns = HOME_PINNED_FIRST[pageSlug];
   if (!patterns?.length) return sites;
@@ -175,7 +177,7 @@ function pinHomeSitesFirst(
   const tool = tools.find((entry) => patterns.some((pattern) => toolMatchesPattern(entry, pattern)));
   if (!tool) return sites;
 
-  const pinned = { ...toolToSite(tool, stats[tool.slug]?.imageOverride), featured: true };
+  const pinned = { ...toolToSite(tool, stats[tool.slug]?.imageOverride, stats[tool.slug]?.tryNowUrlOverride), featured: true };
   const rest = sites.filter((site) => !patterns.some((pattern) => siteMatchesPattern(site, pattern)));
   return [pinned, ...rest];
 }
@@ -205,7 +207,7 @@ function siteToRankItem(site: ExploreSite): DirectoryRankItem {
   };
 }
 
-async function loadAllAinsfwTools(): Promise<{ tools: AINsfwTool[]; stats: Record<string, { upvotes?: number; imageOverride?: string; descriptionOverride?: string }> }> {
+export async function loadAllAinsfwTools(): Promise<{ tools: AINsfwTool[]; stats: Record<string, { upvotes?: number; imageOverride?: string; descriptionOverride?: string; tryNowUrlOverride?: string }> }> {
   const staticSlugs = new Set(AI_NSFW_TOOLS.map((tool) => tool.slug));
   let submissions: AINsfwTool[] = [];
   try {
@@ -325,7 +327,169 @@ async function loadExploreCategory(
   }
 }
 
+export type HomeFeaturedSlotRow = {
+  cardSlug: string;
+  kind: DirectoryKind;
+  listingKey: string;
+  listingName: string;
+  imageUrl: string;
+  badgeText: string;
+};
+
+type BotListing = {
+  _id: { toString(): string };
+  name: string;
+  slug: string;
+  image?: string;
+  description?: string;
+  category?: string;
+  country?: string;
+  views?: number;
+  telegramLink?: string;
+};
+
+/** Explore lists built from AI tools or bots are not "adult websites". */
+const EXPLORE_POOL_SKIP = new Set([
+  'best-ai-porn-sites',
+  'best-ai-porn-generator-sites',
+  'best-ai-companion-websites',
+  'best-telegram-porn-bots',
+]);
+
+export type ExplorePoolEntry = { key: string; site: ExploreSite; categoryTitle: string };
+
+export function exploreSitePool(categories: ExploreCategory[]): ExplorePoolEntry[] {
+  const seen = new Set<string>();
+  const pool: ExplorePoolEntry[] = [];
+  for (const category of categories) {
+    if (EXPLORE_POOL_SKIP.has(category.slug)) continue;
+    for (const site of category.sites) {
+      if (site.url.startsWith('/ainsfw/')) continue;
+      const key = exploreSiteKey(site);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pool.push({ key, site: { ...site, featured: undefined }, categoryTitle: category.title });
+    }
+  }
+  return pool;
+}
+
+function mapSlotRow(row: Record<string, unknown>): HomeFeaturedSlotRow {
+  return {
+    cardSlug: String(row.cardSlug),
+    kind: String(row.kind) as DirectoryKind,
+    listingKey: row.listingKey ? String(row.listingKey) : '',
+    listingName: row.listingName ? String(row.listingName) : '',
+    imageUrl: row.imageUrl ? String(row.imageUrl) : '',
+    badgeText: row.badgeText ? String(row.badgeText) : '',
+  };
+}
+
+export async function getHomeFeaturedSlots(): Promise<Map<string, HomeFeaturedSlotRow>> {
+  try {
+    await connectDB();
+    const rows = await HomeFeaturedSlot.find({}).select('cardSlug kind listingKey listingName imageUrl badgeText').lean();
+    return new Map(
+      (rows as Record<string, unknown>[]).map((row) => {
+        const slot = mapSlotRow(row);
+        return [slot.cardSlug, slot];
+      }),
+    );
+  } catch (error) {
+    console.error('[bestDirectory] home featured slots failed', error);
+    return new Map();
+  }
+}
+
+async function getHomeFeaturedSlot(cardSlug: string): Promise<HomeFeaturedSlotRow | null> {
+  try {
+    await connectDB();
+    const row = await HomeFeaturedSlot.findOne({ cardSlug }).select('cardSlug kind listingKey listingName imageUrl badgeText').lean();
+    return row ? mapSlotRow(row as Record<string, unknown>) : null;
+  } catch (error) {
+    console.error('[bestDirectory] home featured slot failed', error);
+    return null;
+  }
+}
+
+async function findApprovedBot(slug: string): Promise<BotListing | null> {
+  try {
+    await connectDB();
+    return await Bot.findOne({ slug, status: 'approved' })
+      .select('name slug image description category country views telegramLink')
+      .lean<BotListing>();
+  } catch (error) {
+    console.error('[bestDirectory] featured bot failed', error);
+    return null;
+  }
+}
+
+function botToSite(bot: BotListing): ExploreSite {
+  return {
+    name: bot.name,
+    url: `/${bot.slug}`,
+    externalUrl: bot.telegramLink || undefined,
+    image: listingImage(bot.image),
+  };
+}
+
+function botToRankItem(bot: BotListing): DirectoryRankItem {
+  return {
+    name: bot.name,
+    href: `/${bot.slug}`,
+    externalUrl: bot.telegramLink || undefined,
+    image: listingImage(bot.image),
+    description: (bot.description || '').slice(0, 320),
+    category: bot.category || '',
+    views: bot.views || 0,
+    country: bot.country || '',
+    bookmarkKind: 'bot',
+    bookmarkId: bot._id.toString(),
+  };
+}
+
+/** Chosen listing takes #1; the listing it replaced keeps its row but loses the highlight. */
+function pinSiteFirst(sites: ExploreSite[], pinned: ExploreSite): ExploreSite[] {
+  const pinnedKey = exploreSiteKey(pinned);
+  const rest = sites.filter((site) => exploreSiteKey(site) !== pinnedKey);
+  if (rest[0]?.featured) rest[0] = { ...rest[0], featured: false };
+  return [{ ...pinned, featured: true }, ...rest];
+}
+
+function pinRankItemFirst(items: DirectoryRankItem[], pinned: DirectoryRankItem): DirectoryRankItem[] {
+  return [pinned, ...items.filter((item) => item.href !== pinned.href)].slice(0, RANKING_LIMIT);
+}
+
+async function resolveSlotRankItem(slot: HomeFeaturedSlotRow): Promise<DirectoryRankItem | null> {
+  const item = await resolveSlotRankItemBase(slot);
+  return item && slot.imageUrl ? { ...item, image: slot.imageUrl } : item;
+}
+
+async function resolveSlotRankItemBase(slot: HomeFeaturedSlotRow): Promise<DirectoryRankItem | null> {
+  if (!slot.listingKey) return null;
+  if (slot.kind === 'ainsfw') {
+    const { tools, stats } = await loadAllAinsfwTools();
+    const tool = tools.find((entry) => entry.slug === slot.listingKey);
+    if (!tool) return null;
+    return toolToRankItem(tool, stats[tool.slug]?.imageOverride, stats[tool.slug]?.descriptionOverride);
+  }
+  if (slot.kind === 'bots') {
+    const bot = await findApprovedBot(slot.listingKey);
+    return bot ? botToRankItem(bot) : null;
+  }
+  const { categories } = await loadExplorePageCategories();
+  const entry = exploreSitePool(categories).find((item) => item.key === slot.listingKey);
+  return entry ? siteToRankItem(entry.site) : null;
+}
+
 export async function loadRankingItems(slug: string): Promise<DirectoryRankItem[]> {
+  const [items, slot] = await Promise.all([loadBaseRankingItems(slug), getHomeFeaturedSlot(slug)]);
+  if (!slot) return items;
+  const pinned = await resolveSlotRankItem(slot);
+  return pinned ? pinRankItemFirst(items, pinned) : items;
+}
+
+async function loadBaseRankingItems(slug: string): Promise<DirectoryRankItem[]> {
   const page = directoryPageFromSlug(slug);
   if (!page) return [];
 
@@ -375,42 +539,93 @@ export async function loadHomeDirectoryCategories(): Promise<ExploreCategory[]> 
   const botPages = DIRECTORY_PAGES.filter((page) => page.kind === 'bots');
   const explorePages = DIRECTORY_PAGES.filter((page) => page.kind === 'explore');
 
-  const [{ tools, stats }, botItems, explorePageData] = await Promise.all([
+  const [{ tools, stats }, botItems, explorePageData, slots] = await Promise.all([
     loadAllAinsfwTools(),
-    Promise.all(botPages.map((page) => loadRankingItems(page.slug))),
+    Promise.all(botPages.map((page) => loadBaseRankingItems(page.slug))),
     loadExplorePageCategories(),
+    getHomeFeaturedSlots(),
   ]);
   const exploreBySlug = new Map(explorePageData.categories.map((category) => [category.slug, category]));
+  const pool = slots.size > 0 ? exploreSitePool(explorePageData.categories) : [];
+
+  const resolveSlotSite = async (cardSlug: string): Promise<ExploreSite | null> => {
+    const slot = slots.get(cardSlug);
+    if (!slot?.listingKey) return null;
+    if (slot.kind === 'ainsfw') {
+      const tool = tools.find((entry) => entry.slug === slot.listingKey);
+      return tool ? toolToSite(tool, stats[tool.slug]?.imageOverride, stats[tool.slug]?.tryNowUrlOverride) : null;
+    }
+    if (slot.kind === 'bots') {
+      const bot = await findApprovedBot(slot.listingKey);
+      return bot ? botToSite(bot) : null;
+    }
+    return pool.find((entry) => entry.key === slot.listingKey)?.site ?? null;
+  };
+  const pinnedBySlug = new Map<string, ExploreSite>();
+  await Promise.all(
+    [...slots.keys()].map(async (cardSlug) => {
+      const site = await resolveSlotSite(cardSlug);
+      if (site) pinnedBySlug.set(cardSlug, site);
+    }),
+  );
+  const withSlot = (cardSlug: string, sites: ExploreSite[]): ExploreSite[] => {
+    const pinned = pinnedBySlug.get(cardSlug);
+    return pinned ? pinSiteFirst(sites, pinned) : sites;
+  };
 
   const ainsfwCats = ainsfwPages.map((page) => {
     const exploreSource = AINSFW_EXPLORE_SOURCE[page.slug];
     const sites = exploreSource
       ? exploreBySlug.get(exploreSource)?.sites || []
       : rankTools(toolsForPage(page, tools), stats).map((tool) =>
-          toolToSite(tool, stats[tool.slug]?.imageOverride),
+          toolToSite(tool, stats[tool.slug]?.imageOverride, stats[tool.slug]?.tryNowUrlOverride),
         );
     return pageToHomeCategory(
       page,
-      enrichAinsfwSiteImages(pinHomeSitesFirst(page.slug, sites, tools, stats), tools, stats),
+      enrichAinsfwSiteImages(
+        withSlot(page.slug, pinHomeSitesFirst(page.slug, sites, tools, stats)),
+        tools,
+        stats,
+      ),
     );
   });
 
   const botCats = botPages.map((page, index) =>
     pageToHomeCategory(
       page,
-      botItems[index].map((item) => ({
-        name: item.name,
-        url: item.href,
-        externalUrl: item.externalUrl,
-        image: item.image,
-      })),
+      withSlot(
+        page.slug,
+        botItems[index].map((item) => ({
+          name: item.name,
+          url: item.href,
+          externalUrl: item.externalUrl,
+          image: item.image,
+        })),
+      ),
     ),
   );
 
   const webCats = explorePages.map((page) => {
     const source = exploreBySlug.get(page.exploreSourceSlug || page.slug);
-    return pageToHomeCategory(page, source?.sites || []);
+    return pageToHomeCategory(page, withSlot(page.slug, source?.sites || []));
   });
 
-  return [...ainsfwCats, ...botCats, ...webCats];
+  return [...ainsfwCats, ...botCats, ...webCats].map((category) => {
+    const slot = slots.get(category.slug);
+    if (!slot || !category.sites[0]) return category;
+    const [first, ...rest] = category.sites;
+    const badgeLabel = slot.badgeText || undefined;
+    return {
+      ...category,
+      badgeLabel,
+      sites: [
+        {
+          ...first,
+          image: slot.imageUrl || first.image,
+          featured: first.featured || Boolean(badgeLabel),
+        },
+        ...rest,
+      ],
+    };
+  });
 }

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import connectDB from '@/lib/db/mongodb';
 import { Bot, Advert } from '@/lib/models';
 import BotsClient from '../../BotsClient';
-import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
+import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { buildSocialMeta } from '@/lib/seo/socialMeta';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://erogramx.com';
@@ -330,10 +330,11 @@ export default async function CountryBotsPage({ params }: PageProps) {
   const { country: rawCountry } = await params;
   const country = normalizeCountryParam(rawCountry);
 
-  const [bots, adverts, feedCampaigns] = await Promise.all([
+  const [bots, adverts, feedCampaigns, topBannerCampaigns] = await Promise.all([
     getBotsByCountry(country),
     getAdverts(),
     getActiveFeedCampaigns('bots'),
+    getActiveCampaigns('top-banner', { page: 'bots' }).catch(() => []),
   ]);
 
   return (
@@ -344,6 +345,7 @@ export default async function CountryBotsPage({ params }: PageProps) {
       initialIsMobile={false}
       initialIsTelegram={false}
       initialCountry={country}
+      topBannerCampaigns={topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : []}
     />
   );
 }

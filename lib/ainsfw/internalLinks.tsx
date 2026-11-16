@@ -11,7 +11,7 @@ type LinkRule = {
 };
 
 const AINSFW = (category: string) => `/ainsfw/${categoryToSlug(category)}`;
-const BLOG_CAT = (slug: string) => `/blog/category/${slug}`;
+const BLOG_CAT = (_slug: string) => `/blog`;
 const BLOG = (slug: string) => `/blog/${slug}`;
 const TAG = (slug: string) => `/tags/${slug}`;
 const TG = (slug: string) => `/best-telegram-groups/${slug}`;
@@ -95,7 +95,6 @@ const TAG_EXACT: Record<string, string> = {
   'ai sexting': AINSFW('AI Sexting / Chat'),
   'sexting ai': AINSFW('AI Sexting / Chat'),
   'ai nsfw chat': AINSFW('AI NSFW Chat'),
-  'ai chat': AINSFW('AI NSFW Chat'),
   'ai virtual girlfriend': AINSFW('AI Girlfriend'),
   'ai boyfriend': AINSFW('AI Companion'),
   'ai chat': AINSFW('AI Sexting / Chat'),

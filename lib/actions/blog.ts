@@ -21,6 +21,7 @@ export interface BlogCard {
   authorName: string;
   authorAvatar: string;
   commentCount: number;
+  featured: boolean;
 }
 
 export interface BlogArticleFull extends BlogCard {
@@ -62,6 +63,7 @@ function toCard(a: any, authorName: string, authorAvatar: string, commentCount: 
     authorName,
     authorAvatar,
     commentCount,
+    featured: !!a.featured,
   };
 }
 
@@ -75,7 +77,7 @@ async function mapCards(rows: any[]): Promise<BlogCard[]> {
   });
 }
 
-const CARD_FIELDS = 'title slug excerpt featuredImage blogCategory tags publishedAt views authorSlug content';
+const CARD_FIELDS = 'title slug excerpt featuredImage blogCategory tags publishedAt views authorSlug content featured';
 
 /** All published articles (newest first), for the /blog hub. */
 export async function getPublishedBlogArticles(limit = 60): Promise<BlogCard[]> {

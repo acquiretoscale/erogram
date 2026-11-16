@@ -14,7 +14,7 @@ import ErogramWordmark from '@/components/ErogramWordmark';
 import { TelegramPlaneIcon } from '@/lib/icons/TelegramPlaneIcon';
 import PublisherNewListing from '@/components/publisher/PublisherNewListing';
 
-function MastheadAdSlot() {
+function MastheadAdSlot({ variant = 'nav' }: { variant?: 'nav' | 'chip' }) {
   const [cta, setCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
 
   useEffect(() => {
@@ -25,13 +25,17 @@ function MastheadAdSlot() {
 
   if (!cta) return null;
   const ctaLabel = (cta.buttonText || cta.description || '').trim();
+  if (!ctaLabel) return null;
+  const className = variant === 'nav'
+    ? 'shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-[#e0245e] hover:text-[#ff4d7d] transition-colors whitespace-nowrap'
+    : 'shrink-0 inline-flex items-center h-[18px] text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-white bg-[#e0245e] hover:bg-[#c81e51] border border-white/15 px-1.5 sm:px-2 rounded-[3px] transition-colors whitespace-nowrap leading-none';
   return (
     <a
       href={cta.destinationUrl}
       target="_blank"
       rel="sponsored noopener noreferrer"
       onClick={() => trackCampaignClick(cta._id, 'navbar-cta')}
-      className="shrink-0 inline-flex items-center h-[18px] text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-white bg-[#e0245e] hover:bg-[#c81e51] border border-white/15 px-1.5 sm:px-2 rounded-[3px] transition-colors whitespace-nowrap leading-none"
+      className={className}
     >
       {ctaLabel}
     </a>
@@ -71,19 +75,8 @@ function LiveVisitorBar() {
       className="w-full bg-white/[0.03] border-b border-white/[0.06]"
       aria-label="Site status"
     >
-      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] flex items-center gap-3">
-        <div className="flex-1 min-w-0 flex justify-center">
-          <LiveVisitorCount />
-        </div>
-        <div className="shrink-0 flex items-center gap-3">
-          <Link
-            href="/promo"
-            className="text-[10px] sm:text-[11px] font-bold text-white hover:text-white/85 uppercase tracking-[0.12em] whitespace-nowrap leading-none transition-colors"
-          >
-            ADVERTISE
-          </Link>
-          <MastheadAdSlot />
-        </div>
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-8 py-1 sm:py-0 sm:h-[24px] flex items-center justify-center">
+        <LiveVisitorCount />
       </div>
     </div>
   );
@@ -510,6 +503,10 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
             <span className="flex-1">{t('nav.blog', 'Blog')}</span>
           </Link>
 
+          <div className="px-4 py-2" onClick={onClose}>
+            <MastheadAdSlot variant="nav" />
+          </div>
+
           <UpgradePremiumButton href={lp('/premium')} onClick={onClose} label="Upgrade to premium" />
         </div>
       </div>
@@ -680,7 +677,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
 
         {/* Desktop nav — uppercase, letter-spaced, muted. Only at lg+ where it fits;
             tablet falls back to the burger menu so no items get cut off. */}
-        <nav className="hidden lg:flex items-center gap-6 lg:gap-8 shrink-0">
+        <nav className="hidden lg:flex items-center gap-3 shrink-0">
           {NAV_PRE.map((n) => (
             <Link
               key={n.href}
@@ -707,6 +704,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           >
             {t('nav.blog', 'Blog')}
           </Link>
+          <MastheadAdSlot variant="nav" />
         </nav>
 
         <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">
@@ -714,7 +712,7 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           <MastheadUserMenu accent={resolvedAccent} auth={auth} lp={lp} onNewListing={() => setNewListingOpen(true)} />
         </div>
 
-        {/* Mobile + tablet — burger / avatar */}
+        {/* Mobile + tablet — Submit always on the bar; burger / avatar */}
         <div className="lg:hidden ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
           <AddToolNav />
           <button

@@ -17,8 +17,8 @@ export interface BlogCategory {
 export const BLOG_CATEGORIES: BlogCategory[] = [
   {
     slug: 'ai-nsfw',
-    name: 'AI NSFW TOOLS',
-    eyebrow: 'AI NSFW TOOLS',
+    name: 'AI Tools',
+    eyebrow: 'AI Tools',
     metaTitle: 'AI & the Machine — NSFW AI Guides',
     metaDescription:
       'Deep dives on AI companions, image generators, undress bots, and the tools quietly rewriting adult content.',
@@ -35,17 +35,17 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
   },
   {
     slug: 'adult-entertainment',
-    name: 'The Scene',
-    eyebrow: 'The Scene',
-    metaTitle: 'The Scene — Adult Culture & Features',
+    name: 'Adult Entertainment',
+    eyebrow: 'Adult Entertainment',
+    metaTitle: 'Adult Entertainment — Adult Culture & Features',
     metaDescription:
       'Features, investigations, and culture from across the adult entertainment world.',
     tagline: 'Features, investigations, and culture from across the adult web.',
   },
   {
     slug: 'telegram-groups-bots',
-    name: 'Telegram',
-    eyebrow: 'Telegram',
+    name: 'Guides',
+    eyebrow: 'Guides',
     metaTitle: 'Telegram NSFW Groups & Bots Guides',
     metaDescription:
       'Everything about NSFW Telegram groups and bots — finding safe channels, avoiding scams, using the best adult Telegram tools.',
@@ -79,9 +79,21 @@ export const BLOG_CATEGORIES: BlogCategory[] = [
   },
 ];
 
+/** Top-of-blog section pills. URLs stay on the existing category slugs. */
+export const BLOG_NAV_SLUGS = ['adult-entertainment', 'ai-nsfw', 'telegram-groups-bots'] as const;
+
+const ADULT_ENTERTAINMENT_SLUGS = [
+  'adult-entertainment',
+  'asian-porn',
+  'jav-porn',
+  'sex-wellness',
+  'onlyfans-creators',
+];
+
 /** Category hubs that should also list articles filed under a child slug. */
 export function blogCategoryMatchSlugs(slug: string): string[] {
   if (slug === 'asian-porn') return ['asian-porn', 'jav-porn'];
+  if (slug === 'adult-entertainment') return [...ADULT_ENTERTAINMENT_SLUGS];
   return [slug];
 }
 

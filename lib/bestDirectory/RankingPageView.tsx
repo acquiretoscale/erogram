@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import HeaderBanner from '@/components/HeaderBanner';
 import BestDirectoryRankCard from './BestDirectoryRankCard';
 import type { DirectoryPageConfig } from './config';
 import type { DirectoryRankItem } from './types';
@@ -22,6 +23,7 @@ type Props = {
   wantMore: string;
   wantMoreDesc: string;
   browseAll: string;
+  topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
 };
 
 export default function RankingPageView({
@@ -39,6 +41,7 @@ export default function RankingPageView({
   wantMore,
   wantMoreDesc,
   browseAll,
+  topBannerCampaigns = [],
 }: Props) {
   const count = Math.min(items.length, 30);
   const h1Prefix =
@@ -52,6 +55,9 @@ export default function RankingPageView({
       <Navbar accent={ACCENT} />
 
       <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+        <div className="w-full mb-8">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
         <header className="text-center mb-16">
           <div className="inline-block px-4 py-1 bg-[#c0392f]/20 text-[#c0392f] rounded-full text-sm font-bold mb-4 border border-[#c0392f]/30">
             {updatedLabel.replace('{month}', month).replace('{year}', String(year))}

@@ -77,5 +77,9 @@ categories-by-section.txt
 
 # Agent scratch — lives on Desktop (ErogramPRO-scratch), never in repo
 tmp/
+
+# Listing jobs for the local Grok script (client copy + photos). Example stays.
+jobs/ainsfw/*
+!jobs/ainsfw/_example.json
 ffmpeg2pass-*
 find_colombia_tmp.js

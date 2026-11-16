@@ -11,9 +11,9 @@ import BlogCardItem from '../BlogCard';
 import BlogComments from './BlogComments';
 import type { ArticleCommentData } from '@/lib/actions/articleComments';
 import type { BlogArticleFull, BlogCard } from '@/lib/actions/blog';
-import { BLOG_CATEGORY_MAP } from '@/lib/blog/categories';
 import { trackArticleClick } from '@/lib/actions/articleTracking';
 import InlineSocialShare from '@/components/InlineSocialShare';
+import BlogArticleEditorPanel, { BlogArticleEditorFab } from './BlogArticleEditorPanel';
 
 function fmtViews(n: number): string {
   return Math.max(0, n).toLocaleString();
@@ -85,19 +85,19 @@ const RELATED_EROGRAM: Record<string, { label: string; href: string; sub: string
   ],
   'asian-porn': [
     { label: 'Best Premium Asian Porn Sites', href: '/best-premium-asian-porn-sites', sub: 'Ranked HD catalogs' },
-    { label: 'JAV Porn on the Blog', href: '/blog/category/jav-porn', sub: 'Uncensored Japanese adult video' },
+    { label: 'JAV Porn on the Blog', href: '/blog', sub: 'Uncensored Japanese adult video' },
     { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI girlfriends & generators' },
   ],
   'jav-porn': [
     { label: 'Best Premium Asian Porn Sites', href: '/best-premium-asian-porn-sites', sub: 'Asian porn hubs ranked' },
-    { label: 'Asian Porn on the Blog', href: '/blog/category/asian-porn', sub: 'More Asian porn features' },
+    { label: 'Asian Porn on the Blog', href: '/blog', sub: 'More Asian porn features' },
     { label: 'Top AI NSFW Tools', href: '/ainsfw', sub: 'AI girlfriends & generators' },
   ],
 };
 
 const ARTICLE_TAG_HREFS: Record<string, string> = {
-  'JAV Porn': '/blog/category/jav-porn',
-  'Asian Porn': '/blog/category/asian-porn',
+  'JAV Porn': '/blog',
+  'Asian Porn': '/blog',
   'AI Porn Generator': '/ainsfw/ai-image',
   'PornCreate': '/ainsfw/porncreate-undress-ai',
   'AI Undress': '/ainsfw/undress-ai',
@@ -426,10 +426,51 @@ export default function BlogArticleClient({
   related: BlogCard[];
   initialComments?: ArticleCommentData[];
 }) {
-  const cat = BLOG_CATEGORY_MAP[article.blogCategory];
+  const [canEdit, setCanEdit] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [live, setLive] = useState({
+    title: article.title,
+    excerpt: article.excerpt,
+    content: article.content,
+    featuredImage: article.featuredImage,
+    featured: !!article.featured,
+  });
 
-  const components = useMemo(() => buildMarkdownComponents(article.slug, article.title), [article.slug, article.title]);
-  const content = useMemo(() => injectInternalLinks(article.content), [article.content]);
+  useEffect(() => {
+    setLive({
+      title: article.title,
+      excerpt: article.excerpt,
+      content: article.content,
+      featuredImage: article.featuredImage,
+      featured: !!article.featured,
+    });
+  }, [article.title, article.excerpt, article.content, article.featuredImage, article.featured]);
+
+  useEffect(() => {
+    try {
+      const publisher = localStorage.getItem('isPublisher') === 'true';
+      const admin = localStorage.getItem('isAdmin') === 'true';
+      setCanEdit(admin || publisher);
+      if ((admin || publisher) && new URLSearchParams(window.location.search).get('edit') === '1') {
+        setEditing(true);
+      }
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d?.isAdmin || d?.isPublisher) {
+              setCanEdit(true);
+              if (new URLSearchParams(window.location.search).get('edit') === '1') setEditing(true);
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {}
+  }, []);
+
+  const components = useMemo(() => buildMarkdownComponents(article.slug, live.title), [article.slug, live.title]);
+  const content = useMemo(() => injectInternalLinks(live.content), [live.content]);
   const relatedHubs = RELATED_EROGRAM[article.blogCategory] || RELATED_EROGRAM['adult-entertainment'];
 
   return (
@@ -437,25 +478,29 @@ export default function BlogArticleClient({
       {/* Dark masthead stays dark */}
       <EditorialMasthead />
 
-      <article className="max-w-[720px] mx-auto px-6 sm:px-8 pt-14 pb-24">
+      <article className="max-w-[720px] mx-auto px-6 sm:px-8 pt-6 sm:pt-10 pb-16">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-[#a09890] mb-10">
+        <nav className="flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-[#a09890] mb-4">
           <Link href="/blog" className="hover:text-[#c0392f] transition-colors">Blog</Link>
-          {cat && (
-            <>
-              <span className="text-[#d4cec9]">/</span>
-              <Link href={`/blog/category/${cat.slug}`} className="hover:text-[#c0392f] transition-colors">{cat.name}</Link>
-            </>
-          )}
         </nav>
 
-        {/* Eyebrow + title */}
-        <div className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#c0392f] mb-4">{cat?.eyebrow || 'Feature'}</div>
-        <h1 className="font-sans font-black text-[2.2rem] sm:text-[3rem] leading-[1.06] tracking-tight text-[#0f0c0a] mb-4">{article.title}</h1>
-        {article.excerpt && (
-          <p className="font-sans text-[1.25rem] sm:text-[1.45rem] leading-[1.35] text-[#4a443d] mb-7 max-w-3xl">{article.excerpt}</p>
+        <h1 className="font-sans font-black text-[1.85rem] sm:text-[3rem] leading-[1.08] tracking-tight text-[#0f0c0a] mb-2">{live.title}</h1>
+        {article.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {article.tags.map((t) => {
+              const href = ARTICLE_TAG_HREFS[t];
+              const className = 'text-[10px] tracking-[0.12em] uppercase text-[#6a6258] px-2 py-0.5 rounded-full border border-black/[0.1]';
+              return href ? (
+                <Link key={t} href={href} className={`${className} hover:border-[#c0392f]/40 hover:text-[#c0392f] transition-colors`}>{t}</Link>
+              ) : (
+                <span key={t} className={className}>{t}</span>
+              );
+            })}
+          </div>
         )}
-        {!article.excerpt && <div className="mb-7" />}
+        {live.excerpt && (
+          <p className="font-sans text-[1.05rem] sm:text-[1.45rem] leading-[1.4] text-[#4a443d] mb-4 max-w-3xl">{live.excerpt}</p>
+        )}
 
         {/* Meta — byline with author avatar */}
         <div className="flex items-center gap-3 rounded-[4px] bg-[#16110f] px-5 py-4 mb-2">
@@ -501,22 +546,22 @@ export default function BlogArticleClient({
 
         <div className="flex items-center rounded-[4px] bg-[#16110f] px-5 py-3 mb-2">
           <InlineSocialShare
-            shareText={`Check out ${article.title} on Erogram`}
-            emailSubject={`${article.title} - Erogram Blog`}
+            shareText={`Check out ${live.title} on Erogram`}
+            emailSubject={`${live.title} - Erogram Blog`}
             fallbackUrl={`https://erogramx.com/blog/${article.slug}`}
             accentColor="#c0392f"
           />
         </div>
 
         {/* Featured image */}
-        {article.featuredImage && (
-          <div className="my-10 rounded-[4px] overflow-hidden">
+        {live.featuredImage && (
+          <div className="mt-3 mb-4 sm:mt-5 sm:mb-6 rounded-[4px] overflow-hidden">
             {ARTICLE_COVER_LINKS[article.slug] ? (
               <Link href={ARTICLE_COVER_LINKS[article.slug]} className="block">
-                <img src={article.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || article.title} fetchPriority="high" className="w-full hover:opacity-95 transition-opacity" referrerPolicy="no-referrer" />
+                <img src={live.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || live.title} fetchPriority="high" className="w-full hover:opacity-95 transition-opacity" referrerPolicy="no-referrer" />
               </Link>
             ) : (
-              <img src={article.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || article.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
+              <img src={live.featuredImage} alt={ARTICLE_FEATURED_ALTS[article.slug] || live.title} fetchPriority="high" className="w-full" referrerPolicy="no-referrer" />
             )}
           </div>
         )}
@@ -526,24 +571,9 @@ export default function BlogArticleClient({
 
         {/* Body — full content rendered in one pass; inline CTA/video fences
             become components exactly where the editor placed them. */}
-        <div className="mt-4">
+        <div className="mt-2 sm:mt-4">
           <ReactMarkdown components={components} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]}>{content}</ReactMarkdown>
         </div>
-
-        {/* Tags */}
-        {article.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-14 pt-8 border-t border-black/[0.08]">
-            {article.tags.map((t) => {
-              const href = ARTICLE_TAG_HREFS[t];
-              const className = 'text-[11px] tracking-[0.14em] uppercase text-[#6a6258] px-3 py-1.5 rounded-full border border-black/[0.1] hover:border-[#c0392f]/40 hover:text-[#c0392f] transition-colors';
-              return href ? (
-                <Link key={t} href={href} className={className}>{t}</Link>
-              ) : (
-                <span key={t} className={className}>{t}</span>
-              );
-            })}
-          </div>
-        )}
 
         {/* Author bio — magazine-style E-E-A-T byline card */}
         {article.author && (
@@ -589,6 +619,20 @@ export default function BlogArticleClient({
       <div style={{ background: 'linear-gradient(to bottom, #1e0808 0%, #0a0807 100%)' }}>
         <EditorialFooter />
       </div>
+
+      {canEdit && !editing && <BlogArticleEditorFab onEdit={() => setEditing(true)} />}
+      {canEdit && editing && (
+        <BlogArticleEditorPanel
+          slug={article.slug}
+          title={live.title}
+          excerpt={live.excerpt}
+          content={live.content}
+          featuredImage={live.featuredImage}
+          featured={live.featured}
+          onSaved={setLive}
+          onClose={() => setEditing(false)}
+        />
+      )}
     </div>
   );
 }

@@ -301,7 +301,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           <div className="min-w-0">
             {/* Top AI NSFW Block — hidden when a search or category filter is active */}
             {isDefaultBrowse && (
-              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} />
+              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} tone="gold" />
             )}
 
             {isDefaultBrowse && paginationCurrentPage === 1 && recentTools.length > 0 && (
@@ -348,13 +348,13 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
                       featuredIdx++;
                       if (displayedSet.has(ft.slug)) continue;
                       items.push(
-                        <ToolCard key={`featured-${i}-${ft.slug}`} tool={ft} index={i} initialStats={allStats?.[ft.slug]} onVoteChange={handleVoteChange} featured campaignId={featuredCampaignMap[ft.slug]} verified={verifiedSet.has(ft.slug)} />
+                        <ToolCard key={`featured-${i}-${ft.slug}`} tool={ft} index={i} initialStats={allStats?.[ft.slug]} onVoteChange={handleVoteChange} campaignId={featuredCampaignMap[ft.slug]} verified={verifiedSet.has(ft.slug)} spotlight />
                       );
                       break;
                     }
                   }
                   items.push(
-                    <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={handleVoteChange} featured={featuredSlugs.includes(tool.slug)} campaignId={featuredCampaignMap[tool.slug]} verified={verifiedSet.has(tool.slug)} />
+                    <ToolCard key={tool.slug} tool={tool} index={i} initialStats={allStats?.[tool.slug]} onVoteChange={handleVoteChange} campaignId={featuredCampaignMap[tool.slug]} verified={verifiedSet.has(tool.slug)} spotlight />
                   );
                 });
 
