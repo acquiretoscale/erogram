@@ -16,6 +16,10 @@ export const AINSFW_LISTING_BLOCKS: Record<string, AINsfwListingBlocks> = {
     bestFor: 'Casual users dipping in for short, light conversations',
     notIdealFor: 'Anyone settling in for a long session, or wanting genuinely unrestricted roleplay',
   },
+  'fapwise-ai-nude-generator': {
+    bestFor: 'Users who want a public template gallery with undress stills and 5s or 7s clips',
+    notIdealFor: 'Anyone who needs a printed price list before creating an account',
+  },
   'nudiva-undress-ai': {
     bestFor: 'Users who want fast undress results on phone via Telegram without a subscription',
     notIdealFor: 'Anyone who needs hand-tuned editing on every render',

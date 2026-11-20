@@ -1,3 +1,5 @@
+import { FAPWISE_TRY_NOW_URL } from '@/lib/ainsfw/fapwiseLinks';
+
 export type AinsfwTrendingItem = {
   slug: string;
   name: string;
@@ -8,10 +10,10 @@ export type AinsfwTrendingItem = {
 /** Shown until an admin saves a list from the AI NSFW page. */
 export const DEFAULT_AINSFW_TRENDING: AinsfwTrendingItem[] = [
   {
-    slug: 'candy-ai-ai-girlfriend',
-    name: 'Your AI Slut Is Ready',
-    href: 'https://candy.ai',
-    logo: '/assets/ainsfw/trending/candy.png',
+    slug: 'fapwise-ai-nude-generator',
+    name: 'FapWise',
+    href: FAPWISE_TRY_NOW_URL,
+    logo: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/fapwise-ai-nude-generator.webp',
   },
   {
     slug: 'celebmakerai-ai-image',

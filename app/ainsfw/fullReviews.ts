@@ -161,6 +161,86 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
       { name: "Free Nudifier", slug: "free-nudifier-undress-ai" },
     ],
   },
+  "fapwise-ai-nude-generator": {
+    shortDescription: "FapWise is a place where one browser tab does the work of a whole studio. The platform undresses photos, turns stills into short NSFW videos, and builds porn scenes from a simple text prompt, all from one account and one credit wallet. A gallery of ready-made scenes sits on the front page, so newcomers pick a fantasy, add a photo, and get a result in moments instead of fighting with prompts. Signing up takes one click with Google or an email, and new accounts start with free generations to see what the engine can do.",
+    featureHighlights: [
+      {
+        title: "Undress and Real Nudes",
+        body: "The undress tool is the heart of FapWise. Users upload a photo and the AI returns a realistic nude version that keeps the face, the pose, and the lighting of the original. The Real Nudes model is tuned for skin and body detail, so results look like photography rather than plastic. Clean, front-facing photos give the best results, and a busy background now and then needs a second try.",
+      },
+      {
+        title: "Video Undress and Short Clips",
+        body: "FapWise goes past stills. Video Undress and the video templates turn a photo into a short adult clip, with ready scenes such as POV, cowgirl, blowjob, and step-by-step undressing. Clips run 5 to 7 seconds and the motion holds together well for AI video. Watching a still photo start moving is the moment most members decide to stay.",
+      },
+      {
+        title: "Porn Gen and a Gallery Full of Ideas",
+        body: "For users who prefer to start from words, Porn Gen builds a scene from a text prompt. The public gallery shows thousands of creations from other members with the prompt that made each one, so anyone short on ideas can borrow a scene and make it their own. Templates are sorted by likes, new, and trending, which makes the best material easy to find.",
+      },
+    ],
+    sections: [
+      {
+        heading: "FapWise Overview",
+        body: "FapWise is a place where one browser tab does the work of a whole studio. The platform undresses photos, turns stills into short NSFW videos, and builds porn scenes from a simple text prompt, all from one account and one credit wallet. A gallery of ready-made scenes sits on the front page, so newcomers pick a fantasy, add a photo, and get a result in moments instead of fighting with prompts. Signing up takes one click with Google or an email, and new accounts start with free generations to see what the engine can do.",
+      },
+      {
+        heading: "How Does It Work",
+        body: "A new visitor presses Try For Free and signs up with Google or an email. From there, two paths are open. The first is the template row: pick a scene, press Add a photo, and FapWise does the rest. The second is the Generate tab, where the user types a prompt, attaches a photo if wanted, and presses Generate.\n\nEverything runs in the browser on desktop and phone, with nothing to install. Results arrive quickly, and generated files are deleted automatically after 24 hours for privacy. Members on the VIP tier can keep their favorites in a private locker instead.",
+      },
+      {
+        heading: "Pricing and Credits",
+        body: "FapWise runs on credits, not a forced monthly subscription. New accounts receive free generations to test the tool, and credit packs start at $6.99 for 100 credits, with bigger packs bringing the cost per render down. A nude still costs a handful of credits and a short video costs a little more, so one small pack covers a good evening of experiments. Credits do not expire, and an optional VIP pass adds bonus credits and extra perks for regular users.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "FapWise packs undress, video undress, and prompt-based porn generation into one simple website, with a gallery that does half the creative work for the user. The results are realistic, the clips are fun, and the credit system keeps costs under control without locking anyone into a subscription. For anyone curious about AI nudes and short NSFW videos in one place, FapWise is one of the easiest and most rewarding tools to try today. Strictly 18+.",
+      },
+    ],
+    alternatives: [
+      { name: "PornCreate", slug: "porncreate-undress-ai" },
+      { name: "AI SLUTBOT", slug: "aislutbot-ai-nude-generator" },
+      { name: "JOI AI", slug: "joi-ai-nude-generator" },
+    ],
+  },
+  "celebmakerai-ai-nude-generator": {
+    shortDescription: "CelebMakerAI is an uncensored AI porn generator that keeps images, undress edits, NSFW videos, and custom characters under one roof. The platform runs on one pool of credits shared by every tool, so users move from a photo to an edit to a moving clip without leaving the workspace. A row of one-tap scenes on the front page does most of the creative work, and the newest image model, Eden, produces realistic skin and light from 1 credit per image. New accounts receive 5 free credits with no credit card required, which is enough to see the quality first hand.",
+    featureHighlights: [
+      {
+        title: "Undress and One-Tap Edits",
+        body: "The editor is where most members start. CelebMakerAI undresses a generated image or an allowed upload, and one-tap presets change outfits, body, and pose in a single move. Scenes like topless, bent over, or cowgirl are ready to apply, so nobody has to write a long prompt. Results keep the lighting and the skin texture of the original, which is the part cheaper tools usually get wrong.",
+      },
+      {
+        title: "Quick Clips and Full Studio Productions",
+        body: "CelebMakerAI turns a still into a 5 to 20 second porn clip with 48 motions to choose from, including cowgirl, doggy, missionary, and blowjob. AI audio adds moans, dialogue, and scene sound on supported actions. For longer material, Studio builds a full multi-scene video from one prompt, with a storyboard, 5 or 8 second scenes, and one stitched MP4 at the end. Any scene can be previewed and rerolled before the final render.",
+      },
+      {
+        title: "Consistent Characters and 70+ Models",
+        body: "Members build a character once from their own photos, or claim one from a marketplace of more than 70 pre-trained models. After that, the same face shows up in any scene, outfit, or setting, from a coffee shop to the beach. This is the feature that makes CelebMakerAI popular with people who run AI influencer accounts, since every post looks like the same person.",
+      },
+    ],
+    sections: [
+      {
+        heading: "CelebMakerAI Overview",
+        body: "CelebMakerAI is an uncensored AI porn generator that keeps images, undress edits, NSFW videos, and custom characters under one roof. The platform runs on one pool of credits shared by every tool, so users move from a photo to an edit to a moving clip without leaving the workspace. A row of one-tap scenes on the front page does most of the creative work, and the newest image model, Eden, produces realistic skin and light from 1 credit per image. New accounts receive 5 free credits with no credit card required, which is enough to see the quality first hand.",
+      },
+      {
+        heading: "How Does It Work",
+        body: "CelebMakerAI runs in the browser with no local setup. Users pick a path: generate an image from a prompt, edit a photo with the one-tap presets, or animate a still into a clip. The best frame from one tool flows straight into the next, so a generated image becomes an edit and then a video in a few clicks.\n\nPrompts are written in plain language and the controls are built for adult content, so explicit requests work as expected. Content preferences switch between straight and gay material. Developers also get a public API for images, edits, and video clips, which is rare in this category.",
+      },
+      {
+        heading: "Pricing and Credits",
+        body: "CelebMakerAI starts with 5 free credits and no payment details. The Lite plan costs $19.99 per month for 50 credits and covers images and the editor, but it has no videos and no extra credit purchases. Basic is $49.99 per month for 150 credits and one character. Pro, the popular choice, is $79.99 per month for 250 credits, two characters, and video clips from 10 credits each. Elite costs $139.99 per month for 400 credits and four characters. Every plan can be cancelled anytime.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "CelebMakerAI is one of the most complete AI porn studios available today. Realistic images, quick undress edits, clips with sound, full multi-scene productions, and characters that stay consistent all share one credit balance. Users who want video should look at the Pro plan straight away, since the cheaper tiers stop at still images. For anyone serious about AI adult content, CelebMakerAI is a studio worth opening the free credits on. Strictly 18+.",
+      },
+    ],
+    alternatives: [
+      { name: "FapWise", slug: "fapwise-ai-nude-generator" },
+      { name: "PornCreate", slug: "porncreate-undress-ai" },
+      { name: "JOI AI", slug: "joi-ai-nude-generator" },
+    ],
+  },
   "aislutbot-ai-nude-generator": {
     shortDescription: "AI SLUTBOT (also known as SLUTBOT AI) is an AI nude generator that turns a single uploaded photo into hyper-realistic AI generated nudes and short adult video clips. The tool is built around one idea: realistic output with almost no friction. You upload a photo, pick your settings, and the result comes back in seconds. There is no editing timeline, no brushwork, and no steep learning curve. What sets it apart from most undress tools is the quality of its AI nude generation. It runs on a well-trained LLM tuned specifically for human anatomy, lighting, and skin, so the results look convincing rather than plasticky.",
     featureHighlights: [
@@ -301,29 +381,41 @@ export const AINSFW_FULL_REVIEWS: Record<string, AINsfwFullReview> = {
     ],
   },
   "xmode-ai-nsfw-image-generator": {
-    shortDescription:
-      "xMode is a polished AI NSFW image generator and AI nude generator for adults who want strong results without mainstream filters shutting the prompt down. On xmode.ai, you upload reference photos, build a reusable Face ID, and generate uncensored stills and short AI video clips from plain text prompts or ready-made prompt packs. Whether you are exploring NSFW AI for the first time or you already run a busy creative workflow, the tool is built to feel fast, clear, and worth bookmarking.",
+    shortDescription: "xMode is an AI content studio built around one idea: one photo becomes unlimited uncensored content. Users upload a single reference photo and xMode trains a reusable Face ID in seconds. That identity stays consistent across every new scene, so each image looks like the same person. Outfits, poses, and locations can be saved the same way, more than 200 prompt packs handle the writing, and any image turns into a short video with one click. New accounts receive free credits to test the engine before buying anything.",
     featureHighlights: [
       {
-        title: "xMode as an AI NSFW Image Generator and AI Nude Generator",
-        body: "xMode shines as an AI porn generator-class option in the honest sense: explicit AI image generation with control over scene, style, and composition. Generations aim to keep facial identity stable across sets, so outputs feel like the same person, not a random face on every click. That stability matters for nude AI stills, themed galleries, and anything you plan to post or sell. Still images are the core product, and one portrait can extend into a short image-to-video clip when you want motion for teasers or profile refreshes.",
+        title: "Face ID From a Single Photo",
+        body: "Face ID is the heart of xMode. One photo is enough to lock a face, and the model trains in seconds instead of hours. From there, every generation keeps the same facial structure, expressions, and realism, whether the scene is a bedroom, a beach, or a photo studio. Results can be retrained or edited at any time, so a weak output is never the end of the road.",
       },
       {
-        title: "xMode as the Go-To AI Studio for OnlyFans Creators and Agencies",
-        body: "OnlyFans creators, Fansly and Fanvue talent, and OnlyFans agencies managing multiple models often land here because xMode matches how they actually work: repeatable sets, consistent identity per model, and volume without booking a full studio every week. Agencies can standardize looks across a roster, creators can refresh feeds on a schedule, and both keep commercial usage rights on generated content as described on xMode's site. Always check each platform's latest AI rules before posting. If that is your world, xMode is one of the most natural fits in the AI content creation space.",
+        title: "Scenes Built Like Building Blocks",
+        body: "xMode saves more than faces. Outfits, poses, locations, lighting, and objects can each become their own Face ID, and several of them mix into one scene. The same outfit and the same room come back in the next set without uploading anything again. This makes xMode a favorite with creators and agencies who need a lot of consistent content every week.",
       },
       {
-        title: "xMode as a Friendly Uncensored AI Tool for Every Adult Creator",
-        body: "You do not need to run a subscription platform to get value. Hobby creators, artists, and curious users get a capable uncensored AI studio in the browser at app.xmode.ai: prompt, generate, download. Crypto and card payments are available for flexibility. Power users and teams can use the xMode API and xTokens when they want automation. Features like X Secret Mode appeal to anyone who wants a styled or alternate look while keeping professional output quality.",
-      },
-      {
-        title: "xMode as a Top-Ranked AI Video Generator and NSFW AI Platform",
-        body: "xMode belongs in the AI NSFW image generator and AI video generator conversation with strong Face ID workflow, uncensored adult output within lawful policy, and a creator-first pitch. It is a good AI tool and an excellent nude generator on merit, while OnlyFans creators and agencies will recognize it immediately as a serious fit for daily content. Visit xmode.ai when you want uncensored AI images, reliable nude generation, and optional short AI video, from solo sessions up to agency-scale output.",
+        title: "Prompt Packs and One-Click Video",
+        body: "Users who do not like writing prompts get more than 200 curated prompt packs across several style categories, updated daily. Images come out in up to 2K resolution and can be edited after generation. Any favorite portrait turns into a short cinematic video with a single click, which is a quick way to add motion to a feed.",
       },
     ],
-    sections: [],
+    sections: [
+      {
+        heading: "xMode Overview",
+        body: "xMode is an AI content studio built around one idea: one photo becomes unlimited uncensored content. Users upload a single reference photo and xMode trains a reusable Face ID in seconds. That identity stays consistent across every new scene, so each image looks like the same person. Outfits, poses, and locations can be saved the same way, more than 200 prompt packs handle the writing, and any image turns into a short video with one click. New accounts receive free credits to test the engine before buying anything.",
+      },
+      {
+        heading: "How Does It Work",
+        body: "xMode works in three steps. Users upload at least one photo, xMode trains a private identity model in seconds, and then generation starts from a text prompt or a ready style. Everything runs in the browser through the web app, with nothing to install.\n\nThe platform has no mainstream content filters shutting prompts down, so adult scenes work as expected. A busy Discord community shares results, prompt tricks, and community-only packs, and developers can connect through the xMode API.",
+      },
+      {
+        heading: "Pricing and Credits",
+        body: "xMode runs on pay-as-you-go credits with no subscription. New accounts receive a small amount of free credits, and creating a Face ID costs 10 credits. Packs start at $11 for 50 credits, with 300 credits for $45, 600 credits for $80, and 1,200 credits for $140 as the best value. Credits never expire, payment works by card or crypto, and generated images come with a commercial license. All purchases are final, so the free credits are the place to test first.",
+      },
+      {
+        heading: "Final Verdict",
+        body: "xMode does the hardest thing in AI adult content very well: it keeps the same person looking like the same person, image after image. Face ID from one photo, scenes built from saved pieces, daily prompt packs, and one-click video make it a real production tool rather than a toy. With no subscription and credits that never expire, xMode is one of the smartest picks for anyone who wants consistent, uncensored AI content. Strictly 18+.",
+      },
+    ],
     alternatives: [
-      { name: "Genesis Porn", slug: "genesis-porn-ai-image" },
+      { name: "CelebMakerAI", slug: "celebmakerai-ai-nude-generator" },
       { name: "JOI AI", slug: "joi-ai-nude-generator" },
       { name: "PornCreate", slug: "porncreate-undress-ai" },
     ],
@@ -371,6 +463,7 @@ export function getFullReview(slug: string): AINsfwFullReview | undefined {
  * Add every new paying client here with goLive — single source of truth for badge + recent pool.
  */
 export const AINSFW_PAID_CLIENTS = [
+  { slug: 'fapwise-ai-nude-generator', goLive: '2026-11-20T00:00:00.000Z' },
   { slug: 'hornydreams-ai-ai-girlfriend', goLive: '2026-09-13T00:00:00.000Z' },
   { slug: 'aislutbot-ai-nude-generator', goLive: '2026-09-05T12:00:00.000Z' },
   { slug: 'museher-ai-porn-generator', goLive: '2026-11-07T00:00:00.000Z' },

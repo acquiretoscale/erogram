@@ -7,6 +7,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import AinsfwHubVideoBanner, { FAPWISE_HREF, FAPWISE_SRC } from '@/components/ainsfw/AinsfwHubVideoBanner';
 import TrendingToolsBlock from '@/app/ainsfw/TrendingToolsBlock';
 import type { AinsfwTrendingItem } from '@/lib/ainsfw/trendingTools';
 import BotCardSkeleton from './BotCardSkeleton';
@@ -106,6 +107,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
   const isFirstLoad = useRef(true);
   const { t } = useTranslation();
   const lp = useLocalePath();
+  const isMainBotsPage = paginationCurrentPage === 1 && (!initialCountry || initialCountry === 'All');
 
   const [botScores, setBotScores] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
@@ -488,6 +490,11 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
+          {isMainBotsPage ? (
+            <div className="w-full mb-5">
+              <AinsfwHubVideoBanner src={FAPWISE_SRC} href={FAPWISE_HREF} large />
+            </div>
+          ) : null}
           <h1 className="text-[32px] sm:text-[50px] md:text-[58px] font-black leading-[1.05] tracking-tight text-white mb-3">
             {t('bots.title')}
           </h1>
@@ -499,9 +506,11 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           ) : null}
         </motion.div>
 
-        <div className="w-full mb-6 sm:mb-8">
-          <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
+        {!isMainBotsPage ? (
+          <div className="w-full mb-6 sm:mb-8">
+            <HeaderBanner campaigns={topBannerCampaigns} />
+          </div>
+        ) : null}
 
         {/* Filter bar — same framework as AI NSFW: compact, centered, inline */}
         <div className="mb-6 sm:mb-8 flex flex-wrap items-center justify-center gap-2">
@@ -561,6 +570,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
           <div>
             {/* Top Bots Section — hidden when a search or filter is active */}
             {!debouncedSearchQuery && selectedCategory === 'All' && selectedSubcategory === 'All' && (topBots.length > 0 || topBotsLoading) && (
+              <>
               <div className="mb-5 relative rounded-2xl overflow-hidden bg-white">
                 <div className="relative p-3 sm:p-4">
                   <div className="flex items-baseline gap-2.5 mb-3">
@@ -600,6 +610,7 @@ export default function BotsClient({ initialBots, initialTopBots = [], initialAd
                 </div>
               </div>
             </div>
+              </>
             )}
 
             {/* All Bots */}

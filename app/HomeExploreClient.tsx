@@ -5,7 +5,6 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import AinsfwHubVideoBanner from '@/components/ainsfw/AinsfwHubVideoBanner';
 import HomeBlogCard from '@/app/components/HomeBlogCard';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { Locale } from '@/lib/i18n/config';
@@ -451,9 +450,6 @@ export default function HomeExploreClient({
               . Enjoy! ;)
               </span>
             </p>
-          </div>
-          <div className="w-full">
-            <AinsfwHubVideoBanner />
           </div>
         </div>
       </div>

@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import HeaderBanner from '@/components/HeaderBanner';
-import AinsfwHubVideoBanner from '@/components/ainsfw/AinsfwHubVideoBanner';
+import AinsfwHubVideoBanner, { FAPWISE_HREF, FAPWISE_SRC } from '@/components/ainsfw/AinsfwHubVideoBanner';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
@@ -110,7 +109,7 @@ function getUpvotes(slug: string, allStats?: Record<string, ToolStatsData>): num
   return allStats?.[slug]?.upvotes ?? 0;
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [], categoryOptions, trendingTools = [] }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [], categoryOptions, trendingTools = [] }: AINsfwClientProps) {
   const verifiedSet = new Set(verifiedSlugs);
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePricing, setActivePricing] = useState<PricingModel>('All');
@@ -265,7 +264,7 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           </div>
         ) : null}
         <div className="w-full mb-6 sm:mb-8">
-          <HeaderBanner campaigns={topBannerCampaigns} />
+          <AinsfwHubVideoBanner src={FAPWISE_SRC} href={FAPWISE_HREF} />
         </div>
 
         {/* Hero — same content, futuristic condensed italic scanline design treatment */}

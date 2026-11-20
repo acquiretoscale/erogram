@@ -26,6 +26,7 @@ import VerifiedBadge from '@/components/VerifiedBadge';
 import { pickTagHashtagAlt } from '@/lib/ainsfw/imageAlt';
 import { AINSFW_REVIEW_EXAMPLE_VIDEOS, getAinsfwToolPreviewVideo } from '@/lib/ainsfw/toolPreviewVideos';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
+import { resolveAinsfwOutbound } from '@/lib/ainsfw/outboundUrl';
 import ToolProsConsSkeleton from '@/components/ainsfw/ToolProsConsSkeleton';
 import ToolKeyFeatures from '@/components/ainsfw/ToolKeyFeatures';
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
@@ -157,28 +158,27 @@ interface ToolDetailClientProps {
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
 
-function nakedSiteLabel(url: string): string {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, '');
-    const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : '';
-    return `https://${host}${path}`;
-  } catch {
-    return url;
-  }
-}
-
-function NakedSiteLink({ url, rel, onTrack }: { url: string; rel: string; onTrack: () => void }) {
-  if (!/^https?:\/\//i.test(url)) return null;
+function NakedSiteLink({
+  href,
+  label,
+  rel,
+  onTrack,
+}: {
+  href: string;
+  label: string;
+  rel: string;
+  onTrack: () => void;
+}) {
+  if (!/^https?:\/\//i.test(href)) return null;
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel={rel}
       onClick={onTrack}
       className="min-w-0 text-sm font-bold text-[var(--lx-accent)] underline break-all hover:opacity-80"
     >
-      {nakedSiteLabel(url)}
+      {label}
     </a>
   );
 }
@@ -703,7 +703,8 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
       ? tool.image : placeholder
   );
   const [description, setDescription] = useState(tool.description);
-  const [visitUrl, setVisitUrl] = useState(tool.tryNowUrl);
+  const [visitHref, setVisitHref] = useState(() => resolveAinsfwOutbound(tool).href);
+  const [siteLabel, setSiteLabel] = useState(() => resolveAinsfwOutbound(tool).label);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEdit, setAdminEdit] = useState(false);
@@ -768,13 +769,15 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
         ? tool.image : placeholder
     );
     setDescription(tool.description);
-    setVisitUrl(tool.tryNowUrl);
-  }, [tool.image, tool.description, tool.tryNowUrl]);
+    const outbound = resolveAinsfwOutbound(tool);
+    setVisitHref(outbound.href);
+    setSiteLabel(outbound.label);
+  }, [tool.image, tool.description, tool.tryNowUrl, tool.sourceUrl]);
 
   const handleVisit = () => {
     setIsRedirecting(true);
     void trackAinsfwToolClick(tool.slug);
-    window.open(visitUrl, '_blank', 'noopener');
+    window.open(visitHref, '_blank', 'noopener');
   };
 
   const handleVote = async (dir: 'up' | 'down') => {
@@ -811,9 +814,11 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
   const imageHoverTitle = `${tool.name} - ${tool.category}`;
   const coverPreview =
     tool.image && (tool.image.startsWith('https://') || tool.image.startsWith('/')) ? tool.image : '';
-  const reviewGallery = coverPreview
-    ? [coverPreview, ...gallery.filter((src) => src !== coverPreview)]
-    : gallery;
+  const reviewGallery = tool.slug === 'fapwise-ai-nude-generator'
+    ? gallery
+    : coverPreview
+      ? [coverPreview, ...gallery.filter((src) => src !== coverPreview)]
+      : gallery;
   const reviewInsertGallery = tool.slug === 'aislutbot-ai-nude-generator' ? [] : reviewGallery;
   const previewVideo = getAinsfwToolPreviewVideo(tool.slug, initialStats?.previewVideoUrl);
   const reviewInsertCtx: ReviewInsertCtx = { galleryIdx: 0, paragraphCount: 0, exampleVideoIdx: 0 };
@@ -905,7 +910,12 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                     {showVerified && <VerifiedBadge className="w-6 h-6 sm:w-7 sm:h-7" />}
                   </h1>
                 </div>
-                <NakedSiteLink url={visitUrl} rel={visitRel} onTrack={() => { void trackAinsfwToolClick(tool.slug); }} />
+                <NakedSiteLink
+                  href={visitHref}
+                  label={siteLabel}
+                  rel={visitRel}
+                  onTrack={() => { void trackAinsfwToolClick(tool.slug); }}
+                />
               </div>
 
               {previewVideo && (
@@ -1461,7 +1471,7 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
 
       {isAdmin && adminEdit && (
         <ToolDetailAdminPanel
-          tool={{ ...tool, tryNowUrl: visitUrl }}
+          tool={{ ...tool, tryNowUrl: visitHref }}
           initialStats={initialStats}
           gallery={gallery}
           featuredImage={imageSrc === placeholder ? '' : imageSrc}

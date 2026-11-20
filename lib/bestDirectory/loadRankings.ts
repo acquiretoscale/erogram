@@ -9,6 +9,7 @@ import { applyExploreFeatured } from '@/lib/explore/exploreFeatured';
 import { EXPLORE_CATEGORIES, type ExploreCategory, type ExploreSite } from '@/lib/explore/topPornSitesData';
 import { exploreSiteKey } from '@/lib/explore/siteKey';
 import { ainsfwListIconForSlug } from '@/lib/explore/siteIconDomain';
+import { FAPWISE_TRY_NOW_URL } from '@/lib/ainsfw/fapwiseLinks';
 import connectDB from '@/lib/db/mongodb';
 import { Bot, HomeFeaturedSlot } from '@/lib/models';
 import { loadExplorePageCategories } from '@/lib/explore/loadExplorePageCategories';
@@ -29,7 +30,7 @@ const AINSFW_EXPLORE_SOURCE: Record<string, string> = {
 
 /** Homepage AI cards — force #1 pick per list. */
 const HOME_PINNED_FIRST: Record<string, string[]> = {
-  'best-ainsfw': ['candy ai', 'candy-ai'],
+  'best-ainsfw': ['fapwise'],
   'best-ai-girlfriend': ['hornydream', 'hornydreams'],
   'best-undress-ai': ['aislutbot', 'slutbot', 'ai slutbot'],
   'best-ai-porn-generator': ['clothoff'],
@@ -150,7 +151,22 @@ function toolMatchesPattern(tool: AINsfwTool, pattern: string): boolean {
   return haystack.includes(pattern.toLowerCase());
 }
 
+/** Homepage cards that skip the Erogram listing and open the client tracker in a new tab. */
+function directHomeOutbound(site: ExploreSite): ExploreSite {
+  if (!/fapwise/i.test(`${site.name} ${site.url}`)) return site;
+  return { ...site, url: FAPWISE_TRY_NOW_URL, externalUrl: FAPWISE_TRY_NOW_URL, openInNewTab: true };
+}
+
 function pinHomeSitesFirst(
+  pageSlug: string,
+  sites: ExploreSite[],
+  tools: AINsfwTool[],
+  stats: Record<string, { upvotes?: number; imageOverride?: string; tryNowUrlOverride?: string }>,
+): ExploreSite[] {
+  return pinHomeSitesFirstRaw(pageSlug, sites, tools, stats).map(directHomeOutbound);
+}
+
+function pinHomeSitesFirstRaw(
   pageSlug: string,
   sites: ExploreSite[],
   tools: AINsfwTool[],

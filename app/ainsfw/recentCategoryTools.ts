@@ -20,6 +20,9 @@ const RELATED_CATEGORIES: Record<string, string[]> = {
   'AI NSFW Roleplay': ['AI Sexting / Chat', 'AI Companion'],
 };
 
+/** Stay in Recent additions even while they hold a Featured seat. */
+const RECENT_ALWAYS_SHOW = new Set(['fapwise-ai-nude-generator']);
+
 function isExcluded(slug: string): boolean {
   return AINSFW_RECENT_EXCLUDED_SLUGS.has(slug);
 }
@@ -31,7 +34,7 @@ export function pickRecentTools(
   options?: { category?: string; limit?: number; excludeSlugs?: Iterable<string> },
 ): AINsfwTool[] {
   const limit = options?.limit ?? RECENT_POOL_LIMIT;
-  const excludeSlugs = new Set(options?.excludeSlugs ?? []);
+  const excludeSlugs = new Set([...(options?.excludeSlugs ?? [])].filter((s) => !RECENT_ALWAYS_SHOW.has(s)));
   const submissionSlugs = new Set(paidSubmissions.map((t) => t.slug));
 
   const fromDb = [...paidSubmissions]

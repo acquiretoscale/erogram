@@ -1,4 +1,5 @@
 import type { AINsfwTool } from './types';
+import { FAPWISE_DISPLAY_URL, FAPWISE_TRY_NOW_URL } from '@/lib/ainsfw/fapwiseLinks';
 
 const LEGACY_CAT_PREFIXES = [
   'ai-anime-characters', 'ai-erotic-storytelling', 'ai-clothes-remover', 'ai-nsfw-character',
@@ -2167,6 +2168,20 @@ export const AI_NSFW_TOOLS: AINsfwTool[] = [
     payment: ['Credit Cards', 'Debit Cards', 'Crypto', 'Telegram Stars'],
     tryNowUrl: 'https://aislutbot.com',
     sourceUrl: 'https://aislutbot.com',
+  },
+  {
+    slug: 'fapwise-ai-nude-generator',
+    name: 'FapWise',
+    category: 'AI Nude Generator',
+    categories: ['AI Nude Generator', 'AI Porn Generator', 'AI NSFW Image Generator', 'AI Video Generator', 'Undress AI', 'AI Face Swap'],
+    vendor: 'VYTRIX LTD',
+    description: 'FapWise is a place where one browser tab does the work of a whole studio. The platform undresses photos, turns stills into short NSFW videos, and builds porn scenes from a simple text prompt, all from one account and one credit wallet. A gallery of ready-made scenes sits on the front page, so newcomers pick a fantasy, add a photo, and get a result in moments instead of fighting with prompts. Signing up takes one click with Google or an email, and new accounts start with free generations to see what the engine can do.',
+    image: 'https://pub-5800916b33a845e4b67e2d5be553c1e3.r2.dev/ainsfw/fapwise-ai-nude-generator.webp',
+    tags: ['ai nude generator', 'fapwise', 'ai porn generator', 'ai nsfw image generator', 'ai video generator', 'undress ai', 'ai face swap', 'nude ai'],
+    subscription: 'Freemium & Paid',
+    payment: ['Credit Cards', 'Crypto'],
+    tryNowUrl: FAPWISE_TRY_NOW_URL,
+    sourceUrl: FAPWISE_DISPLAY_URL,
   },
 ];
 

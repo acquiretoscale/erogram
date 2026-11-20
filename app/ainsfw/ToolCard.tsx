@@ -20,6 +20,7 @@ import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBad
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
 import { ainsfwListingLinkRel } from '@/lib/ainsfw/listingFollow';
+import { resolveAinsfwOutbound } from '@/lib/ainsfw/outboundUrl';
 
 // PAUSED (2026-07-24, owner order) — see AdvertCard.tsx. Flip to false to resume.
 const IMPRESSION_TRACKING_PAUSED = true;
@@ -244,7 +245,8 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
     if (featured && campaignId) trackClick(campaignId, 'ainsfw-featured');
   }, [featured, campaignId]);
 
-  const hubSiteUrl = (tool.tryNowUrl || '').trim();
+  const hubOutbound = resolveAinsfwOutbound(tool);
+  const hubSiteUrl = hubOutbound.href;
   const hubSiteIsLink = /^https?:\/\//i.test(hubSiteUrl);
 
   const renderCardMedia = (opts: { eager?: boolean; imgClassName?: string }) => {

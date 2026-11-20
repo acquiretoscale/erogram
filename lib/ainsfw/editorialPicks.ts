@@ -3,7 +3,7 @@ export const AINSFW_EDITORIAL_PICK_COUNT = 8;
 export const AINSFW_EDITORIAL_PICK_LABEL = "EROGRAM EDITORIAL TEAM'S PICK";
 export const AINSFW_EDITORIAL_PICK_DEFAULTS = [
   'hornydreams-ai-ai-girlfriend',
-  'candy-ai-ai-girlfriend',
+  'fapwise-ai-nude-generator',
   'aislutbot-ai-nude-generator',
   'porncreate-undress-ai',
 ];

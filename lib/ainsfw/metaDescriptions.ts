@@ -52,6 +52,10 @@ export const META_DESCRIPTIONS: Record<string, AinsfwMetaEntry> = {
     title: 'AISLUTBOT: Best AI Nude Generator & NSFW Video (2026)',
     en: 'Upload a photo, get uncensored AI nudes and short videos. AISLUTBOT runs undress, face swap, and nude AI with Stars. Explore AISLUTBOT and other AI nude generators on Erogram.pro.',
   },
+  'fapwise-ai-nude-generator': {
+    title: 'FapWise: AI Nude Generator, Undress & NSFW Video (2026)',
+    en: 'Upload or prompt, get AI nudes and short clips. FapWise runs undress, face swap, and a public Gallery on credits. Explore FapWise and other AI nude generators on Erogram.pro.',
+  },
 };
 
 /** Custom SEO meta for /ainsfw/{category-slug} hub pages */

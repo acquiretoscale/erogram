@@ -8,6 +8,7 @@ const NAME_ICON_DOMAIN: Record<string, string> = {
   'Digital Playground': 'digitalplayground.com',
   'Mofos': 'mofos.com',
   'FapHouse': 'faphouse.com',
+  'FapWise': 'fapwise.com',
   'TeenMegaWorld': 'teenmegaworld.net',
   'RawRides': 'rawrides.tv',
   'TeamSkeet': 'teamskeet.com',

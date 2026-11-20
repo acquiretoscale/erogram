@@ -24,6 +24,7 @@ import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
 import JoinGroupFeaturedOfBlock from '@/app/components/JoinGroupFeaturedOfBlock';
 import type { HomeFeaturedOfCreator } from '@/lib/explore/homeFeaturedOfCreator';
 import TrendingToolsBlock from '@/app/ainsfw/TrendingToolsBlock';
+import AinsfwHubVideoBanner, { FAPWISE_HREF, FAPWISE_SRC } from '@/components/ainsfw/AinsfwHubVideoBanner';
 import type { AinsfwTrendingItem } from '@/lib/ainsfw/trendingTools';
 
 interface Entity {
@@ -599,6 +600,11 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
       <div className="relative z-20 pt-[82px]">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-2">
           <HeaderBanner campaigns={liveTopBanners} />
+          {type === 'bot' ? (
+            <div className="w-full mt-3">
+              <AinsfwHubVideoBanner src={FAPWISE_SRC} href={FAPWISE_HREF} large />
+            </div>
+          ) : null}
         </div>
         <div className="bg-[#0d1117] border-b border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
