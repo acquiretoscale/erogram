@@ -928,6 +928,7 @@ export default function GroupsClient({ initialGroups, feedCampaigns = [], initia
                                 isIndex={spot}
                                 shouldPreload={true}
                                 onVisible={undefined}
+                                placementOverride={SPOT_PLACEMENT[spot]}
                               />,
                             );
                           } else {

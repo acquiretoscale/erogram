@@ -11,6 +11,7 @@ import {
 
 /** Shared loader for homepage + group join spotlight (same creator, same rotation pool). Server only. */
 export async function getHomeFeaturedOfCreator(): Promise<HomeFeaturedOfCreator | null> {
+  return null;
   try {
     await connectDB();
     const [c, trending] = await Promise.all([
@@ -42,7 +43,7 @@ export async function getHomeFeaturedOfCreator(): Promise<HomeFeaturedOfCreator 
           liveHourEnd?: number;
         } | null>,
     ]);
-    if (!c?.username || !c.avatar) return null;
+    if (!c?.username || !c?.avatar) return null;
 
     let campaignDest = '';
     if (trending?.linkedCampaignId) {

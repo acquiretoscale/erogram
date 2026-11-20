@@ -14,6 +14,9 @@ import type { FeedCampaign } from '@/app/groups/types';
 import type { ToolStatsData } from '@/lib/actions/ainsfw';
 import AinsfwHeaderActions from '@/components/AinsfwHeaderActions';
 import HeaderBanner from '@/components/HeaderBanner';
+import AinsfwHubVideoBanner from '@/components/ainsfw/AinsfwHubVideoBanner';
+import TrendingToolsBlock from '@/app/ainsfw/TrendingToolsBlock';
+import type { AinsfwTrendingItem } from '@/lib/ainsfw/trendingTools';
 
 interface Props {
   category: string;
@@ -27,6 +30,7 @@ interface Props {
   verifiedSlugs?: string[];
   topAdCampaigns?: FeedCampaign[];
   topBannerCampaigns?: Array<{ _id: string; creative: string; destinationUrl: string; bannerDevice?: 'all' | 'mobile' | 'desktop' }>;
+  trendingTools?: AinsfwTrendingItem[];
 }
 
 const CATEGORY_DESC: Record<string, string> = {
@@ -52,6 +56,7 @@ export default function CategoryClient({
   verifiedSlugs = [],
   topAdCampaigns = [],
   topBannerCampaigns = [],
+  trendingTools = [],
 }: Props) {
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -64,9 +69,6 @@ export default function CategoryClient({
       <Navbar />
 
       <div className="relative z-10 mt-24 sm:mt-28">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-2">
-          <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
       {/* Breadcrumb */}
       <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-b border-[#22c55e]/15 bg-[#04140c]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
@@ -96,6 +98,10 @@ export default function CategoryClient({
           <p className="text-white/50 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             {desc}
           </p>
+          <div className="mt-4 space-y-4">
+            <AinsfwHubVideoBanner />
+            <HeaderBanner campaigns={topBannerCampaigns} />
+          </div>
         </motion.div>
 
         <TopAINsfwBlock
@@ -106,6 +112,10 @@ export default function CategoryClient({
           verifiedSlugs={verifiedSlugs}
           topAdCampaigns={topAdCampaigns}
         />
+
+        <div className="mb-8">
+          <TrendingToolsBlock items={trendingTools} tools={featuredCatalogTools} />
+        </div>
 
         <RecentAdditionsBlock tools={recentTools} allStats={recentStats} verifiedSlugs={verifiedSlugs} />
 

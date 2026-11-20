@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import HeaderBanner from '@/components/HeaderBanner';
+import AinsfwHubVideoBanner from '@/components/ainsfw/AinsfwHubVideoBanner';
 import HomeBlogCard from '@/app/components/HomeBlogCard';
 import type { BlogCard } from '@/lib/actions/blog';
 import type { Locale } from '@/lib/i18n/config';
@@ -82,26 +82,10 @@ function listingHref(site: ExploreSite): string {
   return site.externalUrl ?? site.url;
 }
 
-function outboundHref(site: ExploreSite): string {
-  const ext = (site.externalUrl || '').trim();
-  if (ext) return ext;
-  if (!isInternalExploreUrl(site.url)) return site.url;
-  return listingHref(site);
-}
-
 function opensListingInNewTab(site: ExploreSite): boolean {
   const href = listingHref(site);
   if (isInternalExploreUrl(href)) return Boolean(site.openInNewTab);
   return true;
-}
-
-function opensOutboundInNewTab(site: ExploreSite): boolean {
-  const href = outboundHref(site);
-  return Boolean((site.externalUrl || '').trim()) || Boolean(site.openInNewTab) || !isInternalExploreUrl(href);
-}
-
-function showExternalShortcut(site: ExploreSite): boolean {
-  return Boolean(site.externalUrl && isInternalExploreUrl(site.url));
 }
 
 function featuredIndexBefore(sites: ExploreSite[], index: number): number {
@@ -156,40 +140,9 @@ function SiteNameLink({ site }: { site: ExploreSite }) {
   }
 
   return (
-    <Link href={href} className={className}>
+    <Link href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {site.name}
     </Link>
-  );
-}
-
-function SiteExternalShortcut({ site }: { site: ExploreSite }) {
-  if (!showExternalShortcut(site) || !site.externalUrl) return null;
-
-  return (
-    <a
-      href={site.externalUrl}
-      target="_blank"
-      rel={exploreSiteOutboundRel(site)}
-      className="shrink-0 ml-1 p-1 rounded-md text-[#c0392f]/70 hover:text-[#c0392f] hover:bg-red-100/80 transition-all opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-      aria-label={`Visit ${site.name} website`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        width={16}
-        height={16}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-        <path d="M15 3h6v6" />
-        <path d="M10 14 21 3" />
-      </svg>
-    </a>
   );
 }
 
@@ -205,8 +158,8 @@ function PickBadge({ label }: { label: string }) {
 }
 
 function LeaderToolPreview({ site }: { site: ExploreSite }) {
-  const href = outboundHref(site);
-  const newTab = opensOutboundInNewTab(site);
+  const href = listingHref(site);
+  const newTab = opensListingInNewTab(site);
   const inner = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -228,18 +181,10 @@ function LeaderToolPreview({ site }: { site: ExploreSite }) {
   const className =
     'group relative block w-full aspect-[16/10] overflow-hidden border-b border-[#c0392f]/20 bg-[#120606]';
 
-  if (newTab) {
-    return (
-      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
-        {inner}
-      </a>
-    );
-  }
-
   return (
-    <Link href={href} className={className}>
+    <a href={href} target="_blank" rel={newTab ? exploreSiteOutboundRel(site) : 'noopener noreferrer'} className={className}>
       {inner}
-    </Link>
+    </a>
   );
 }
 
@@ -361,20 +306,14 @@ function CategoryCard({
                 return (
                   <li key={`${category.slug}-${site.name}-${index}`} style={{ height: `${rowHeight}px` }}>
                     <div className={`${rowClass} h-full`}>
-                      {newTab ? (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel={exploreSiteOutboundRel(site)}
-                          className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
-                        >
-                          {rowInner}
-                        </a>
-                      ) : (
-                        <Link href={href} className="flex items-center gap-2.5 min-w-0 flex-1 h-full">
-                          {rowInner}
-                        </Link>
-                      )}
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel={newTab ? exploreSiteOutboundRel(site) : 'noopener noreferrer'}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
+                      >
+                        {rowInner}
+                      </a>
                     </div>
                   </li>
                 );
@@ -389,7 +328,6 @@ function CategoryCard({
                   <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>
                   <SiteFavicon site={site} />
                   <SiteNameLink site={site} />
-                  <SiteExternalShortcut site={site} />
                 </li>
               );
             })
@@ -413,7 +351,6 @@ export default function HomeExploreClient({
   topGroupCategories = [],
   featuredArticles = [],
   homeFeaturedOf = null,
-  topBannerCampaigns = [],
   locale = 'en',
   faq,
 }: {
@@ -453,7 +390,7 @@ export default function HomeExploreClient({
 
   return (
     <div>
-    <div className="explore-page explore-bg explore-scanlines home-light min-h-screen text-white relative">
+    <div className="explore-page explore-bg explore-scanlines min-h-screen text-white relative">
       <Navbar accent={ACCENT} />
 
       <div className="relative z-10 home-hero-section">
@@ -516,7 +453,7 @@ export default function HomeExploreClient({
             </p>
           </div>
           <div className="w-full">
-            <HeaderBanner campaigns={topBannerCampaigns} enlargeDesktop />
+            <AinsfwHubVideoBanner />
           </div>
         </div>
       </div>

@@ -482,6 +482,10 @@ export const siteConfigSchema = new Schema(
       type: [{ name: String, visible: { type: Boolean, default: true }, order: { type: Number, default: 0 } }],
       default: [],
     },
+    mediakit: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -556,7 +560,7 @@ export const campaignSchema = new Schema(
     internalName: { type: String, default: '' },
     slot: {
       type: String,
-      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed', 'article-link', 'ainsfw'],
+      enum: ['top-banner', 'homepage-hero', 'feed', 'navbar-cta', 'join-cta', 'filter-cta', 'sidebar-feed', 'article-link', 'ainsfw', 'trending-on-erogram'],
       required: true,
     },
     creative: { type: String, required: false, default: '' },
@@ -732,6 +736,9 @@ export const premiumEventSchema = new Schema(
         'submission_crypto_invoice_error',
         'submission_pre_checkout',
         'submission_payment_success',
+        'custom_checkout_invoice_created',
+        'custom_checkout_invoice_error',
+        'custom_checkout_paid',
       ],
     },
     userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
@@ -944,6 +951,25 @@ export const PwaInstall = models.PwaInstall || model('PwaInstall', pwaInstallSch
 export const PremiumConfig = models.PremiumConfig || model('PremiumConfig', premiumConfigSchema);
 export const ManualRevenue = models.ManualRevenue || model('ManualRevenue', manualRevenueSchema);
 export const PremiumPricing = models.PremiumPricing || model('PremiumPricing', premiumPricingSchema);
+
+// Custom Checkout — one shared /checkout link. The client types the amount and tool name, then pays.
+export const customCheckoutSchema = new Schema(
+  {
+    publicId: { type: String, required: true, unique: true, index: true },
+    description: { type: String, required: true },
+    amountUsd: { type: Number, required: true, min: 1 },
+    clientName: { type: String, default: '' },
+    clientEmail: { type: String, default: '' },
+    note: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+    paymentId: { type: String, default: null },
+    paidAt: { type: Date, default: null },
+    createdByUsername: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+customCheckoutSchema.index({ createdAt: -1 });
+export const CustomCheckout = freshModel('CustomCheckout', customCheckoutSchema);
 
 // Best Group Pick Schema – admin-curated picks for "Best Telegram Groups" pages
 export const bestGroupPickSchema = new Schema(
@@ -1610,3 +1636,19 @@ linkExchangePartnerSchema.index({ hidden: 1, sortOrder: 1 });
 
 export const LinkExchangePartner =
   models.LinkExchangePartner || model('LinkExchangePartner', linkExchangePartnerSchema);
+
+/** AI NSFW homepage “Trending Tools” row. One document. Admin edits the list from the page. */
+const ainsfwTrendingSchema = new Schema(
+  {
+    key: { type: String, required: true, unique: true },
+    items: [{
+      slug: { type: String, default: '' },
+      name: { type: String, default: '' },
+      href: { type: String, default: '' },
+      logo: { type: String, default: '' },
+    }],
+  },
+  { timestamps: true },
+);
+
+export const AinsfwTrending = freshModel('AinsfwTrending', ainsfwTrendingSchema);

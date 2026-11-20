@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import HeaderBanner from '@/components/HeaderBanner';
+import AinsfwHubVideoBanner from '@/components/ainsfw/AinsfwHubVideoBanner';
 import Footer from '@/components/Footer';
 import ToolCard from './ToolCard';
 import AdvertCard from '../groups/AdvertCard';
@@ -19,6 +20,8 @@ import type { AuthorProfile } from '@/lib/actions/authors';
 import { AINSFW_PAGE_SIZE } from './constants';
 import { getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import TopAINsfwBlock, { loadAllScores } from './TopAINsfwBlock';
+import TrendingToolsBlock from './TrendingToolsBlock';
+import type { AinsfwTrendingItem } from '@/lib/ainsfw/trendingTools';
 import RecentAdditionsBlock from './RecentAdditionsBlock';
 import AinsfwToolsFilterBar from './AinsfwToolsFilterBar';
 import { categoryToSlug } from './data';
@@ -53,6 +56,7 @@ interface AINsfwClientProps {
   recentTools?: AINsfwTool[];
   verifiedSlugs?: string[];
   featuredHubSlugs?: string[];
+  trendingTools?: AinsfwTrendingItem[];
   /** Categories that have at least one tool (dropdown excludes empty hubs). */
   categoryOptions?: AINsfwCategory[];
 }
@@ -106,7 +110,7 @@ function getUpvotes(slug: string, allStats?: Record<string, ToolStatsData>): num
   return allStats?.[slug]?.upvotes ?? 0;
 }
 
-export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [], categoryOptions }: AINsfwClientProps) {
+export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boostFeaturedSlugs = [], featuredCampaignMap = {}, topBannerCampaigns = [], topAdCampaigns = [], feedCampaigns = [], paginationCurrentPage = 1, paginationTotalPages = 1, pageSize = AINSFW_PAGE_SIZE, guideAuthor, recentTools = [], verifiedSlugs = [], featuredHubSlugs = [], categoryOptions, trendingTools = [] }: AINsfwClientProps) {
   const verifiedSet = new Set(verifiedSlugs);
   const [activeCategory, setActiveCategory] = useState<AINsfwCategory>('All');
   const [activePricing, setActivePricing] = useState<PricingModel>('All');
@@ -260,12 +264,16 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
             </ul>
           </div>
         ) : null}
+        <div className="w-full mb-6 sm:mb-8">
+          <HeaderBanner campaigns={topBannerCampaigns} />
+        </div>
+
         {/* Hero — same content, futuristic condensed italic scanline design treatment */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="text-center mb-3"
+          className="text-center mb-10 sm:mb-12"
         >
           <h1 className="ainsfw-hero-title text-[26px] sm:text-[40px] md:text-[48px] mb-1.5 leading-[0.95]">
             {t('ainsfw.heroTitle', 'Best AI NSFW Tools')}
@@ -273,36 +281,24 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
           <p className="text-white/50 text-xs sm:text-sm max-w-xl mx-auto leading-snug">
             {t('ainsfw.heroSubtitle')}
           </p>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1">
-            <Link
-              href="/best-ai-nsfw-tools"
-              className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#22c55e] text-black text-[9px] sm:text-[10px] font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors leading-none"
-            >
-              {t('ainsfw.top10Rankings', 'TOP 10 Rankings')}
-            </Link>
-            {HERO_CATEGORY_LINKS.map((category) => (
-              <Link
-                key={category}
-                href={`/ainsfw/${categoryToSlug(category)}`}
-                className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-[9px] sm:text-[10px] font-bold transition-all leading-none"
-              >
-                {category}
-              </Link>
-            ))}
+          <div className="mt-4">
+            <AinsfwHubVideoBanner />
           </div>
         </motion.div>
-
-        <div className="w-full mb-3">
-          <HeaderBanner campaigns={topBannerCampaigns} />
-        </div>
 
         <div>
           {/* Main Content — full width now that the sidebar is gone */}
           <div className="min-w-0">
             {/* Top AI NSFW Block — hidden when a search or category filter is active */}
             {isDefaultBrowse && (
-              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} tone="gold" />
+              <TopAINsfwBlock tools={tools} featuredHubSlugs={featuredHubSlugs} allStats={allStats} featuredCampaignMap={featuredCampaignMap} topAdCampaigns={topAdCampaigns} onVoteChange={handleVoteChange} verifiedSlugs={verifiedSlugs} tone="gold" outboundCta badge="FEATURED AI TOOLS" />
             )}
+
+            {isDefaultBrowse && paginationCurrentPage === 1 ? (
+              <div className="mb-8">
+                <TrendingToolsBlock items={trendingTools} tools={tools} isAdmin={isAdmin} />
+              </div>
+            ) : null}
 
             {isDefaultBrowse && paginationCurrentPage === 1 && recentTools.length > 0 && (
               <RecentAdditionsBlock tools={recentTools} allStats={allStats} verifiedSlugs={verifiedSlugs} />
@@ -323,6 +319,23 @@ export default function AINsfwClient({ tools, allStats, featuredSlugs = [], boos
                 onSearchChange={setSearch}
                 onClear={clearFilters}
               />
+              <div className="mb-8 sm:mb-10 flex flex-wrap items-center justify-center gap-1">
+                <Link
+                  href="/best-ai-nsfw-tools"
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#22c55e] text-black text-[9px] sm:text-[10px] font-black uppercase tracking-wide hover:bg-[#4ade80] transition-colors leading-none"
+                >
+                  {t('ainsfw.top10Rankings', 'TOP 10 Rankings')}
+                </Link>
+                {HERO_CATEGORY_LINKS.map((category) => (
+                  <Link
+                    key={category}
+                    href={`/ainsfw/${categoryToSlug(category)}`}
+                    className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#0a1f12] text-white/70 border border-[#22c55e]/20 hover:border-[#22c55e]/50 hover:text-white text-[9px] sm:text-[10px] font-bold transition-all leading-none"
+                  >
+                    {category}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

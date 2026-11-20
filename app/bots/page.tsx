@@ -7,6 +7,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { getActiveCampaigns, getActiveFeedCampaigns } from '@/lib/actions/campaigns';
 import { enforceAdAndBoostExpiry } from '@/lib/campaignLifecycle';
 import { getAllBotStats } from '@/lib/actions/botVotes';
+import { getAinsfwTrending } from '@/lib/actions/ainsfwTrending';
 import { getLocale, getPathname } from '@/lib/i18n/server';
 import { getDictionary, LOCALES, localePath } from '@/lib/i18n';
 import { BOTS_FEED_PAGE_SIZE } from './constants';
@@ -185,13 +186,14 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
 
   // Device detection removed: reading headers() opts the page out of static ISR
   // (same fix as the AINSFW hub). The client refreshes device-specific ads after load.
-  const [bots, totalBots, adverts, feedCampaigns, topBots, topBannerCampaigns] = await Promise.all([
+  const [bots, totalBots, adverts, feedCampaigns, topBots, topBannerCampaigns, trendingTools] = await Promise.all([
     getBots(BOTS_FEED_PAGE_SIZE, skip),
     getApprovedBotsCount(),
     getAdverts(),
     getActiveFeedCampaigns('bots'),
     getTopBots(10),
     getActiveCampaigns('top-banner', { page: 'bots' }).catch(() => []),
+    getAinsfwTrending(),
   ]);
 
   const paginationTotalPages = Math.max(1, Math.ceil(totalBots / BOTS_FEED_PAGE_SIZE));
@@ -221,6 +223,7 @@ export async function BotsPageView({ page = 1 }: { page?: number }) {
           paginationTotalPages={paginationTotalPages}
           botsPageSize={BOTS_FEED_PAGE_SIZE}
           topBannerCampaigns={topBannerCampaigns.length > 0 && topBannerCampaigns[0].creative ? topBannerCampaigns : []}
+          trendingTools={trendingTools}
         />
       </ErrorBoundary>
     </>

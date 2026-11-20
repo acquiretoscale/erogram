@@ -151,9 +151,37 @@ interface ToolDetailClientProps {
   browseCategories?: string[];
   /** Color theme + labels. Defaults to the green AI NSFW theme. */
   theme?: ListingTheme;
+  /** rel for the visible website link beside the visit button. */
+  visitRel?: string;
 }
 
 function getBookmarkKey(slug: string) { return `ainsfw_bookmark_${slug}`; }
+
+function nakedSiteLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+    const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : '';
+    return `https://${host}${path}`;
+  } catch {
+    return url;
+  }
+}
+
+function NakedSiteLink({ url, rel, onTrack }: { url: string; rel: string; onTrack: () => void }) {
+  if (!/^https?:\/\//i.test(url)) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel={rel}
+      onClick={onTrack}
+      className="min-w-0 text-sm font-bold text-[var(--lx-accent)] underline break-all hover:opacity-80"
+    >
+      {nakedSiteLabel(url)}
+    </a>
+  );
+}
 
 function getReviewAuthorAvatar(author: AuthorProfile) {
   return author.avatar || '/assets/blog/authors/eros.webp';
@@ -666,7 +694,7 @@ function ReviewGlossary({
   );
 }
 
-export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], topBannerCampaigns = [], browseCategories, theme = GREEN_THEME }: ToolDetailClientProps) {
+export default function ToolDetailClient({ tool, fullReview, showVerified = false, aiArticles = [], initialStats, reviewAuthor, listingBlocks, featuredHubSlugs = [], featuredHubTools = [], featuredHubStats = {}, verifiedSlugs = [], topAdCampaigns = [], topBannerCampaigns = [], browseCategories, theme = GREEN_THEME, visitRel = 'noopener noreferrer' }: ToolDetailClientProps) {
   const { t, lp, catLabel, tryFree, tryForFree, reviewsLabel } = useAinsfwChrome();
   const visitLabel = tool.ctaText?.trim() || '';
   const placeholder = '/assets/image.jpg';
@@ -824,6 +852,13 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
             <span className="text-white font-semibold truncate max-w-[140px] sm:max-w-[180px]">{tool.name}</span>
           </nav>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <AinsfwHeaderActions
+              part="share"
+              omitShare={['whatsapp', 'email']}
+              shareText={`Check out ${tool.name} on Erogram`}
+              emailSubject={`${tool.name} - AI NSFW Tool on Erogram`}
+              fallbackUrl={`${CANONICAL_BASE}/ainsfw/${tool.slug}`}
+            />
             <button
               type="button"
               onClick={handleBookmark}
@@ -855,8 +890,8 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
               transition={{ duration: 0.5 }}
             >
               <div className="mb-3">
-                <div className="flex items-center gap-2 sm:gap-3 mb-3">
-                  <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-[var(--lx-accent)]/25 shrink-0">
+                <div className="flex flex-col items-start gap-3 mb-3">
+                  <div className="w-48 h-48 lg:w-56 lg:h-56 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-[var(--lx-accent)]/25 shrink-0">
                     <img
                       src={theme.logoUrl || imageSrc}
                       alt={`${tool.name} logo`}
@@ -865,19 +900,12 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
                       onError={(e) => { (e.target as HTMLImageElement).src = placeholder; }}
                     />
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-black text-white leading-tight min-w-0 flex-1 flex items-center gap-2">
-                    <span className="truncate">{tool.name}</span>
+                  <h1 className="text-xl sm:text-2xl font-black text-white leading-tight flex items-center gap-2">
+                    <span>{tool.name}</span>
                     {showVerified && <VerifiedBadge className="w-6 h-6 sm:w-7 sm:h-7" />}
                   </h1>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleVisit}
-                  disabled={isRedirecting}
-                  className="w-full inline-flex items-center justify-center h-12 px-4 rounded-md bg-[#facc15] text-black font-black uppercase tracking-wide text-xs border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
-                </button>
+                <NakedSiteLink url={visitUrl} rel={visitRel} onTrack={() => { void trackAinsfwToolClick(tool.slug); }} />
               </div>
 
               {previewVideo && (
@@ -1025,12 +1053,14 @@ export default function ToolDetailClient({ tool, fullReview, showVerified = fals
               </div>
 
               <div className="pt-4 border-t border-white/10">
-                <AinsfwHeaderActions
-                  part="share"
-                  shareText={`Check out ${tool.name} on Erogram`}
-                  emailSubject={`${tool.name} - AI NSFW Tool on Erogram`}
-                  fallbackUrl={`${CANONICAL_BASE}/ainsfw/${tool.slug}`}
-                />
+                <button
+                  type="button"
+                  onClick={handleVisit}
+                  disabled={isRedirecting}
+                  className="mb-4 mx-auto flex w-fit items-center justify-center h-11 px-5 rounded-md bg-gradient-to-b from-[#fff7c2] via-[#facc15] to-[#ca8a04] text-black font-black uppercase tracking-wide text-[13px] whitespace-nowrap border-[3px] border-black shadow-[0_4px_0_0_#000,0_8px_18px_-2px_rgba(250,204,21,0.95),inset_0_1px_0_rgba(255,255,255,0.75)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_0_#000,0_12px_22px_-2px_rgba(250,204,21,1),inset_0_1px_0_rgba(255,255,255,0.75)] active:translate-y-[3px] active:shadow-[0_1px_0_0_#000,inset_0_1px_0_rgba(255,255,255,0.45)] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isRedirecting ? t('ainsfw.opening', 'Opening...') : (visitLabel || tryFree(tool.name))}
+                </button>
               </div>
             </div>
           </div>

@@ -23,6 +23,8 @@ import { compressImage } from '@/lib/utils/compressImage';
 import { entityShowsVerifiedBadge } from '@/lib/boostPricing';
 import JoinGroupFeaturedOfBlock from '@/app/components/JoinGroupFeaturedOfBlock';
 import type { HomeFeaturedOfCreator } from '@/lib/explore/homeFeaturedOfCreator';
+import TrendingToolsBlock from '@/app/ainsfw/TrendingToolsBlock';
+import type { AinsfwTrendingItem } from '@/lib/ainsfw/trendingTools';
 
 interface Entity {
   _id: string;
@@ -69,48 +71,20 @@ interface JoinCtaCampaign {
   buttonText: string;
 }
 
-const JOIN_PREMIUM_GOLD_BG =
-  'linear-gradient(135deg, #b8860b 0%, #ffd700 40%, #fff8b0 55%, #ffd700 70%, #b8860b 100%)';
-const JOIN_PREMIUM_GOLD_SHADOW =
-  '0 4px 24px -4px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)';
-
-function JoinPremiumCtaButton() {
-  const { t } = useTranslation();
-  const lp = useLocalePath();
-  return (
-    <Link
-      href={lp('/premium')}
-      className="block w-full flex flex-col items-center justify-center gap-1.5 px-3 sm:px-6 py-4 sm:py-5 rounded-2xl transition-all hover:brightness-105 active:scale-[0.99]"
-      style={{ background: JOIN_PREMIUM_GOLD_BG, boxShadow: JOIN_PREMIUM_GOLD_SHADOW }}
-    >
-      <span className="inline-flex items-center justify-center gap-1.5 text-sm sm:text-base font-black text-[#1a0f00] tracking-tight uppercase text-center leading-tight">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="#1a0f00" className="shrink-0" aria-hidden>
-          <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
-        </svg>
-        {t('groups.premiumCtaTitle', 'UNLOCK UNLISTED PREMIUM TG GROUPS')}
-      </span>
-      <span className="text-[10px] sm:text-xs font-semibold text-[#3d2800]/90 leading-snug text-center px-2 max-w-md">
-        {t(
-          'groups.joinPremiumCtaSubtitle',
-          'Stop wasting your time with expired and spammy groups. Unlock instantly 4000+ unlisted Premium TG groups.',
-        )}
-      </span>
-    </Link>
-  );
-}
-
 function JoinWithGroupsCta({
   show,
   children,
+  below,
 }: {
   show: boolean;
   children: ReactNode;
+  below?: ReactNode;
 }) {
-  if (!show) return <>{children}</>;
+  if (!show) return <>{children}{below}</>;
   return (
     <div className="flex flex-col gap-3 sm:gap-4 w-full relative z-10">
       <div className="w-full min-w-0">{children}</div>
-      <JoinPremiumCtaButton />
+      {below}
     </div>
   );
 }
@@ -167,6 +141,7 @@ interface JoinClientProps {
   botStats?: BotStatsData;
   rankingCoverImages?: Record<string, string>;
   joinFeaturedOfCreator?: HomeFeaturedOfCreator | null;
+  trendingTools?: AinsfwTrendingItem[];
 }
 
 interface PopupAdvert {
@@ -278,7 +253,7 @@ function VaultTeaserBlock({ items }: { items: VaultTeaserItem[] }) {
   );
 }
 
-export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], rankingCoverImages = {}, joinFeaturedOfCreator = null }: JoinClientProps) {
+export default function JoinClient({ entity, type, similarGroups = [], initialIsMobile = false, initialIsTelegram = false, joinCtaCampaign = null, topBannerCampaigns = [], isDeleted = false, vaultTeaser = [], featuredCreators = [], rankingCoverImages = {}, joinFeaturedOfCreator = null, trendingTools = [] }: JoinClientProps) {
   const [countdown, setCountdown] = useState(0);
   const [linkReady, setLinkReady] = useState(false);
   const [buttonConfig, setButtonConfig] = useState<ButtonConfig | null>(null);
@@ -846,7 +821,8 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 )}
                 {entityShowsVerifiedBadge(entity) && (
                   <div className="absolute top-3 right-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1">
-                    <span>✓</span> {t('common.verified')}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/assets/verified-tick.png" alt="" className="w-3.5 h-3.5 object-contain" /> {t('common.verified')}
                   </div>
                 )}
                 {/* Premium Badge Overlay */}
@@ -989,7 +965,10 @@ export default function JoinClient({ entity, type, similarGroups = [], initialIs
                 <h2 className="text-2xl font-bold text-white relative z-10 mb-2">{t('slug.readyToJoin')}</h2>
                 <p className="text-gray-400 mb-6 relative z-10">{t('slug.clickToAccess')}</p>
 
-                <JoinWithGroupsCta show={type === 'group'}>
+                <JoinWithGroupsCta
+                  show={type === 'group'}
+                  below={type === 'group' ? <TrendingToolsBlock items={trendingTools} tone="group" /> : null}
+                >
                 {!userInteracted ? (
                   <button
                     onClick={handleStartCountdown}

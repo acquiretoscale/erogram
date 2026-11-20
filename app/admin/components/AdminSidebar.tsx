@@ -30,6 +30,7 @@ import {
     MessageSquare,
     Send,
     Smartphone,
+    CreditCard,
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -63,6 +64,7 @@ const tabs: TabItem[] = [
     { href: '/admin/newsletter',       name: 'Newsletter',      icon: Mail },
     { href: '/admin/email',            name: 'Email',           icon: Send },
     { href: '/admin/paid-campaigns',   name: 'Paid Campaigns',  icon: Megaphone },
+    { href: '/admin/checkout',         name: 'Checkout Links',  icon: CreditCard },
     { href: '/admin/coupons',          name: 'Coupons',         icon: Star },
     { href: '/admin/settings',         name: 'Settings',        icon: Settings },
 ];

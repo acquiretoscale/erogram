@@ -122,6 +122,87 @@ function isStartAFunChatAd(campaign: FeedCampaign | undefined, name: string | un
     return (campaign?.destinationUrl || '').toLowerCase().includes('offer_id=12348');
 }
 
+function isTopGroupsPlacement(campaign: FeedCampaign | undefined, placementOverride?: string): boolean {
+    const p = (placementOverride || campaign?.placement || '').toLowerCase();
+    return p.startsWith('top-groups');
+}
+
+function instacamTitleLabel(startAFunChat: boolean, name: string): string {
+    return startAFunChat ? 'New' : name;
+}
+
+const INSTACAM_TOP_BTN_CLASS =
+    'w-full py-2.5 sm:py-3 px-3 font-black text-sm uppercase tracking-[0.06em] border-[3px] border-black shadow-[4px_4px_0_0_#000] rounded-md hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-[transform,box-shadow] duration-75';
+
+const INSTACAM_TOP_BTN_STYLE: React.CSSProperties = {
+    background: '#FFE500',
+    color: '#000000',
+};
+
+function InstacamTopGroupsCard({
+    campaign,
+    handleClick,
+    imageSrc,
+    setImageSrc,
+    imgRef,
+    isIndex,
+    forceVisible = false,
+}: {
+    campaign: FeedCampaign;
+    handleClick: () => void;
+    imageSrc: string;
+    setImageSrc: (src: string) => void;
+    imgRef: React.RefObject<HTMLDivElement | null>;
+    isIndex: number;
+    forceVisible?: boolean;
+}) {
+    const cta = (campaign.buttonText && campaign.buttonText.trim()) ? campaign.buttonText.trim() : 'Say Hi';
+    return (
+        <div className="h-full">
+            <div
+                role="link"
+                tabIndex={0}
+                onClick={handleClick}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleClick(); }}
+                className="relative bg-white rounded-lg overflow-hidden h-full flex flex-col border-[3px] border-black shadow-[5px_5px_0_0_#000] cursor-pointer group"
+            >
+                <div ref={imgRef} className="relative w-full h-44 sm:h-56 overflow-hidden bg-black shrink-0 border-b-[3px] border-black">
+                    <Image
+                        src={imageSrc}
+                        alt={campaign.description || 'New'}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
+                        className="object-cover object-top"
+                        priority={forceVisible || isIndex < 4}
+                        onError={() => setImageSrc('/assets/image.jpg')}
+                    />
+                </div>
+                <div className="p-3 sm:p-4 flex flex-col flex-grow">
+                    <h3 className="text-base sm:text-lg font-black text-black leading-tight flex items-center gap-1.5">
+                        <span>New</span>
+                        <AdCardVerifiedMark show={campaign.verified === true} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                    </h3>
+                    {campaign.description?.trim() ? (
+                        <p className="text-black/70 text-xs sm:text-sm mt-1 mb-3 flex-grow leading-snug">
+                            {campaign.description}
+                        </p>
+                    ) : (
+                        <div className="flex-grow mb-3" />
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                        className={INSTACAM_TOP_BTN_CLASS}
+                        style={INSTACAM_TOP_BTN_STYLE}
+                    >
+                        {cta}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function AdCardVerifiedMark({
     show,
     className = 'w-4 h-4 sm:w-5 sm:h-5 shrink-0',
@@ -333,7 +414,7 @@ function VideoAdCard({ campaign, handleClick, hidePromoted = false, growthPercen
                 <div className="p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 shrink-0">
                     <h3 className="font-black text-white leading-tight flex items-start justify-between gap-2 text-[11px] sm:text-xs">
                         <span className="flex items-start gap-1 min-w-0">
-                            <span className="min-w-0 break-words">{campaign.name}</span>
+                            <span className="min-w-0 break-words">{instacamTitleLabel(isStartAFunChatAd(campaign, campaign.name), campaign.name)}</span>
                             {campaign.verified === true && (
                                 <TwitterVerifiedIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 mt-0.5" />
                             )}
@@ -428,7 +509,7 @@ function AinsfwHubAdCard({
                     <h3 className={spotlight
                         ? 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-[#15803d] transition-colors flex items-center gap-1 min-w-0'
                         : 'text-xs sm:text-sm font-black text-gray-900 mb-0.5 leading-tight truncate group-hover:text-black transition-colors flex items-center gap-1 min-w-0'}>
-                        <span className="truncate">{campaign.name}</span>
+                        <span className="truncate">{instacamTitleLabel(isStartAFunChatAd(campaign, campaign.name), campaign.name)}</span>
                         {showVerified && <VerifiedBadge className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />}
                     </h3>
                     {campaign.description ? (
@@ -444,7 +525,9 @@ function AinsfwHubAdCard({
                         className={`${AD_BTN_CLASS} cursor-pointer text-center text-[10px] sm:text-xs tracking-[0.06em] uppercase`}
                         style={adButtonStyle(campaign)}
                     >
-                        {t('ainsfw.tryNow', 'TRY NOW →')}
+                        {isStartAFunChatAd(campaign, campaign.name)
+                            ? ((campaign.buttonText && campaign.buttonText.trim()) || 'Say Hi')
+                            : t('ainsfw.tryNow', 'TRY NOW →')}
                     </div>
                 </div>
             </div>
@@ -819,6 +902,19 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
 
     const showVerified = campaign?.verified === true;
     const startAFunChatAd = isStartAFunChatAd(campaign, ad.name);
+    if (startAFunChatAd && campaign && isTopGroupsPlacement(campaign, placementOverride)) {
+        return (
+            <InstacamTopGroupsCard
+                campaign={campaign}
+                handleClick={() => handleClick()}
+                imageSrc={imageSrc}
+                setImageSrc={setImageSrc}
+                imgRef={imgRef}
+                isIndex={isIndex}
+                forceVisible={forceVisible}
+            />
+        );
+    }
     const adImageClass = feedAdImageClass(startAFunChatAd);
     const adImageGradientClass = startAFunChatAd
         ? 'bg-gradient-to-t from-[#0a0a0a]/75 via-transparent to-transparent opacity-55'
@@ -881,7 +977,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                     <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                         <h3 className={`font-black text-white mb-2 sm:mb-3 leading-snug flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent)}`}>
                             <span className="flex items-start gap-1 min-w-0 flex-1">
-                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{instacamTitleLabel(startAFunChatAd, ad.name)}</span>
                                 <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                             </span>
                             <span className="shrink-0">
@@ -949,7 +1045,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                         {/* Title */}
                         <h3 className={`font-black text-white mb-2 sm:mb-3 leading-snug flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent)}`}>
                             <span className="flex items-start gap-1 min-w-0 flex-1">
-                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                                <span className={feedAdTitleTextClass(startAFunChatAd)}>{instacamTitleLabel(startAFunChatAd, ad.name)}</span>
                                 <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                             </span>
                             <span className="shrink-0">
@@ -1011,7 +1107,7 @@ export default function AdvertCard({ advert, campaign, isIndex = 0, shouldPreloa
                 <div className="p-3 sm:p-5 flex-grow flex flex-col relative">
                     <h3 className={`font-black text-white mb-2 sm:mb-3 flex items-start justify-between gap-2 ${feedAdTitleSize(startAFunChatAd, growthPercent, true)} ${typeof growthPercent === 'number' || startAFunChatAd ? 'text-left' : 'text-center'}`}>
                         <span className={`flex items-start gap-1 min-w-0 flex-1 ${typeof growthPercent === 'number' || startAFunChatAd ? '' : 'justify-center w-full'}`}>
-                            <span className={feedAdTitleTextClass(startAFunChatAd)}>{ad.name}</span>
+                            <span className={feedAdTitleTextClass(startAFunChatAd)}>{instacamTitleLabel(startAFunChatAd, ad.name)}</span>
                             <AdCardVerifiedMark show={showVerified} className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5" />
                         </span>
                         <span className="shrink-0">

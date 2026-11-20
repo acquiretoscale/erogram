@@ -25,9 +25,11 @@ const DEVICE_CLASS: Record<string, string> = {
   desktop: 'hidden md:block',
 };
 
+const ROTATE_MS = 7000;
+
 /**
  * Header banner: no max-width, no fixed height. Full width of container, image natural size.
- * Shows exactly one banner per page; a different one is picked each time the user views a page (on mount).
+ * One banner at a time. Multiple campaigns share the slot: random start, then rotate.
  * Respects bannerDevice: 'mobile' renders only on <md, 'desktop' only on md+, 'all' everywhere.
  */
 export default function HeaderBanner({
@@ -39,7 +41,12 @@ export default function HeaderBanner({
   const items = useMemo(() => (campaigns ?? []).filter((c) => c?.creative), [campaigns]);
   const [currentIndex, setCurrentIndex] = useState(0);
   useEffect(() => {
-    if (items.length > 1) setCurrentIndex(Math.floor(Math.random() * items.length));
+    if (items.length <= 1) return;
+    setCurrentIndex(Math.floor(Math.random() * items.length));
+    const id = window.setInterval(() => {
+      setCurrentIndex((i) => (i + 1) % items.length);
+    }, ROTATE_MS);
+    return () => window.clearInterval(id);
   }, [items.length]);
 
   const current = items[currentIndex] ?? items[0];
@@ -89,6 +96,11 @@ export default function HeaderBanner({
           </a>
         </div>
       </div>
+      {items.map((c) => (
+        c._id === current._id ? null : (
+          <img key={c._id} src={c.creative} alt="" aria-hidden="true" className="hidden" />
+        )
+      ))}
     </div>
   );
 }

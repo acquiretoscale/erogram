@@ -13,6 +13,7 @@ import { getAuthorBySlug } from '@/lib/actions/authors';
 import { buildSocialMeta, buildMetadataAlternates, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 import { getVerifiedSlugs } from '@/app/ainsfw/fullReviews';
 import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
+import { getAinsfwTrending } from '@/lib/actions/ainsfwTrending';
 import { getPopulatedHubCategories } from '@/lib/ainsfw/categoryListings';
 
 const BASE_URL = CANONICAL_BASE;
@@ -53,7 +54,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
   const dict = await getDictionary(locale);
   const a = dict.ainsfw ?? {};
   const staticSlugs = new Set(AI_NSFW_TOOLS.map(t => t.slug));
-  const [featuredInfos, boostFeaturedSlugs, topBannerCampaigns, allPaidSubmissions, topAdCampaigns, feedCampaigns, guideAuthor] = await Promise.all([
+  const [featuredInfos, boostFeaturedSlugs, topBannerCampaigns, allPaidSubmissions, topAdCampaigns, feedCampaigns, guideAuthor, trendingTools] = await Promise.all([
     getFeaturedTools(),
     getBoostFeaturedSlugs(),
     getActiveCampaigns('top-banner', { page: 'ainsfw' }).catch(() => []),
@@ -61,6 +62,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
     getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
     getActiveFeedCampaigns('ainsfw').catch(() => []),
     getAuthorBySlug('eros'),
+    getAinsfwTrending(),
   ]);
   const paidSubmissions = allPaidSubmissions.filter((t) => !staticSlugs.has(t.slug));
   const paidBySlug = new Map(allPaidSubmissions.map((p) => [p.slug, p]));
@@ -71,6 +73,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
       ...t,
       categories: p.categories?.length ? p.categories : t.categories,
       tags: p.tags?.length ? p.tags : t.tags,
+      createdAt: p.createdAt,
     };
   });
   const allTools = [...catalogWithPlacements, ...paidSubmissions];
@@ -158,7 +161,7 @@ export async function AINsfwPageView({ page = 1 }: { page?: number }) {
           <Link key={p} href={`/ainsfw/page/${p}`}>{`AI NSFW page ${p}`}</Link>
         ))}
       </nav>
-      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} featuredHubSlugs={featuredHubSlugs} categoryOptions={categoryOptions} />
+      <AINsfwClient tools={displayTools} allStats={allStats} featuredSlugs={featuredSlugs} boostFeaturedSlugs={boostFeaturedSlugs} featuredCampaignMap={featuredCampaignMap} topBannerCampaigns={topBannerCampaigns} topAdCampaigns={topAdCampaigns} feedCampaigns={feedCampaigns} paginationCurrentPage={currentPage} paginationTotalPages={paginationTotalPages} pageSize={AINSFW_PAGE_SIZE} guideAuthor={guideAuthor} recentTools={recentTools} verifiedSlugs={verifiedSlugs} featuredHubSlugs={featuredHubSlugs} categoryOptions={categoryOptions} trendingTools={trendingTools} />
     </>
   );
 }

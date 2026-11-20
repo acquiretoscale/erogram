@@ -61,6 +61,11 @@ function outboundHref(site: ExploreSite): string {
   return site.externalUrl ?? site.url;
 }
 
+function listingHref(site: ExploreSite): string {
+  if (isInternalExploreUrl(site.url)) return site.url;
+  return site.externalUrl ?? site.url;
+}
+
 function opensOutboundInNewTab(site: ExploreSite): boolean {
   return Boolean(site.externalUrl) || site.openInNewTab || !isInternalExploreUrl(outboundHref(site));
 }
@@ -143,9 +148,10 @@ function SiteNameLink({ site, featured = false }: { site: ExploreSite; featured?
   const className = featured
     ? 'min-w-0 text-[16px] font-black leading-tight text-gray-900 hover:text-[#c0392f] transition-colors truncate'
     : 'min-w-0 text-[15px] font-semibold leading-tight text-gray-900 hover:text-[#c0392f] transition-colors truncate';
-  const href = outboundHref(site);
+  const href = listingHref(site);
+  const leaveSite = !isInternalExploreUrl(href);
 
-  if (opensOutboundInNewTab(site)) {
+  if (leaveSite && opensOutboundInNewTab(site)) {
     return (
       <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
         {site.name}
@@ -154,7 +160,7 @@ function SiteNameLink({ site, featured = false }: { site: ExploreSite; featured?
   }
 
   return (
-    <Link href={href} className={className}>
+    <Link href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {site.name}
     </Link>
   );
@@ -311,16 +317,8 @@ function FeaturedLeaderPreview({ site, categorySlug }: { site: ExploreSite; cate
   const className =
     'group relative block w-full h-[72px] overflow-hidden border-b border-[#c0392f]/20 bg-[#120606]';
 
-  if (newTab) {
-    return (
-      <a href={href} target="_blank" rel={exploreSiteOutboundRel(site)} className={className}>
-        {inner}
-      </a>
-    );
-  }
-
   return (
-    <a href={href} className={className}>
+    <a href={href} target="_blank" rel={newTab ? exploreSiteOutboundRel(site) : 'noopener noreferrer'} className={className}>
       {inner}
     </a>
   );
@@ -566,8 +564,8 @@ function CategoryCard({
                     <div className={`${rowClass} h-full`}>
                       <a
                         href={href}
-                        target={newTab ? '_blank' : undefined}
-                        rel={newTab ? exploreSiteOutboundRel(site) : undefined}
+                        target="_blank"
+                        rel={newTab ? exploreSiteOutboundRel(site) : 'noopener noreferrer'}
                         className="flex items-center gap-2.5 min-w-0 flex-1 h-full"
                       >
                         <span className={`shrink-0 tabular-nums text-right ${rankClass}`}>{index + 1}</span>

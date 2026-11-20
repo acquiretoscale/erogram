@@ -7,40 +7,10 @@ import { usePathname } from 'next/navigation';
 import { useLocalePath, useTranslation } from '@/lib/i18n/client';
 import { getMyListingsSummary } from '@/lib/actions/myListings';
 import { getMyAINSFWSummary } from '@/lib/actions/myAINSFWListings';
-import { getCampaignPlacement } from '@/lib/actions/publicData';
-import { trackClick as trackCampaignClick } from '@/lib/actions/campaigns';
 import { RtaBadge } from '@/components/AgeGate';
 import ErogramWordmark from '@/components/ErogramWordmark';
 import { TelegramPlaneIcon } from '@/lib/icons/TelegramPlaneIcon';
 import PublisherNewListing from '@/components/publisher/PublisherNewListing';
-
-function MastheadAdSlot({ variant = 'nav' }: { variant?: 'nav' | 'chip' }) {
-  const [cta, setCta] = useState<{ _id: string; destinationUrl: string; description: string; buttonText: string } | null>(null);
-
-  useEffect(() => {
-    getCampaignPlacement('navbar-cta')
-      .then((d) => { if (d?.campaign?.destinationUrl) setCta(d.campaign); })
-      .catch(() => {});
-  }, []);
-
-  if (!cta) return null;
-  const ctaLabel = (cta.buttonText || cta.description || '').trim();
-  if (!ctaLabel) return null;
-  const className = variant === 'nav'
-    ? 'shrink-0 inline-flex items-center gap-1 text-[11px] font-bold tracking-[0.18em] uppercase text-[#e0245e] hover:text-[#ff4d7d] transition-colors whitespace-nowrap'
-    : 'shrink-0 inline-flex items-center h-[18px] text-[9px] sm:text-[10px] font-bold tracking-[0.1em] uppercase text-white bg-[#e0245e] hover:bg-[#c81e51] border border-white/15 px-1.5 sm:px-2 rounded-[3px] transition-colors whitespace-nowrap leading-none';
-  return (
-    <a
-      href={cta.destinationUrl}
-      target="_blank"
-      rel="sponsored noopener noreferrer"
-      onClick={() => trackCampaignClick(cta._id, 'navbar-cta')}
-      className={className}
-    >
-      {ctaLabel}
-    </a>
-  );
-}
 
 const NAV_PRE: Array<{ labelKey: string; fallback: string; href: string; badge?: string }> = [
   { labelKey: 'nav.groups', fallback: 'Groups', href: '/groups' },
@@ -503,10 +473,6 @@ function MobileNavMenu({ open, lp, onClose }: { open: boolean; lp: (p: string) =
             <span className="flex-1">{t('nav.blog', 'Blog')}</span>
           </Link>
 
-          <div className="px-4 py-2" onClick={onClose}>
-            <MastheadAdSlot variant="nav" />
-          </div>
-
           <UpgradePremiumButton href={lp('/premium')} onClick={onClose} label="Upgrade to premium" />
         </div>
       </div>
@@ -704,7 +670,6 @@ export function EditorialMasthead({ accent, fixed = false, wordmarkMode = 'defau
           >
             {t('nav.blog', 'Blog')}
           </Link>
-          <MastheadAdSlot variant="nav" />
         </nav>
 
         <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-auto">

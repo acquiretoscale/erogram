@@ -4,6 +4,7 @@ import { Group, Bot, User } from '@/lib/models';
 import { AI_NSFW_TOOLS } from '@/app/ainsfw/data';
 import { getApprovedSubmissions } from '@/lib/actions/ainsfw';
 import AINSFWPricingClient from './AINSFWPricingClient';
+import { getMediaKitContent } from '@/lib/actions/mediakitContent';
 import { buildSocialMeta, CANONICAL_BASE } from '@/lib/seo/socialMeta';
 
 const title = 'GET LISTED ON EROGRAMX';
@@ -40,11 +41,14 @@ export default async function AddAINSFWPage() {
     console.error('Add AINSFW stats error:', error);
   }
 
+  const mediaKit = await getMediaKitContent().catch(() => null);
+
   return (
     <AINSFWPricingClient
       aiNsfwCount={aiNsfwCount}
       groupsAndBotsCount={groupsAndBotsCount}
       totalUsers={totalUsers}
+      promoFaq={mediaKit?.faq ?? []}
     />
   );
 }

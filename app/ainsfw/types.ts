@@ -44,6 +44,8 @@ export interface AINsfwTool {
   submissionTier?: string;
   /** Custom visit-button words. Empty keeps the usual button. */
   ctaText?: string;
+  /** When this listing was added. Used for the 8-day follow window. */
+  createdAt?: string;
 }
 
 export type AINsfwCategory = 'All' | AINsfwToolCategory;

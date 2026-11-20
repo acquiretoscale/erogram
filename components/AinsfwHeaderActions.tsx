@@ -12,6 +12,7 @@ type AinsfwHeaderActionsProps = {
   part?: 'all' | 'submit' | 'share';
   submitHref?: string;
   submitLabel?: string;
+  omitShare?: Array<'x' | 'reddit' | 'whatsapp' | 'telegram' | 'email'>;
 };
 
 export default function AinsfwHeaderActions({
@@ -21,6 +22,7 @@ export default function AinsfwHeaderActions({
   part = 'all',
   submitHref,
   submitLabel,
+  omitShare,
 }: AinsfwHeaderActionsProps) {
   const { t } = useTranslation();
   const lp = useLocalePath();
@@ -34,6 +36,7 @@ export default function AinsfwHeaderActions({
           shareText={shareText}
           emailSubject={emailSubject}
           fallbackUrl={fallbackUrl}
+          omit={omitShare}
         />
       )}
       {showSubmit && (

@@ -101,6 +101,7 @@ export default function ExploreSiteListingClient({
       featuredHubTools={altTools}
       featuredHubSlugs={altTools.map((t) => t.slug)}
       featuredHubStats={altStats}
+      visitRel={visitRel}
     />
   );
 }

@@ -1,7 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/db/mongodb';
-import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent } from '@/lib/models';
+import { User, Group, Bot, AINsfwSubmission, OnlyFansCreator, PremiumEvent, CustomCheckout } from '@/lib/models';
 import { notifyAdminsOfSale } from '@/lib/utils/notifyAdmins';
 import { getPremiumPricing } from '@/lib/premiumPricing';
 import { buildBoostPaymentUpdate, cryptoUsdFromStars, BOOST_STARS, SCALE_USD, type BoostPaymentType } from '@/lib/boostPricing';
@@ -145,6 +145,34 @@ async function handleFeaturedCreatorPayment(creatorId: string, paymentId: string
   });
 }
 
+async function handleCustomCheckoutPayment(publicId: string, paymentId: string) {
+  const checkout = await CustomCheckout.findOne({ publicId });
+  if (!checkout) {
+    throw new Error(`Custom checkout not found: ${publicId}`);
+  }
+  if (checkout.status === 'paid' || checkout.paymentId === paymentId) return;
+
+  checkout.status = 'paid';
+  checkout.paymentId = paymentId;
+  checkout.paidAt = new Date();
+  await checkout.save();
+
+  const who = checkout.description || checkout.clientName || 'Client';
+  await logCryptoEvent({
+    event: 'custom_checkout_paid',
+    paymentId,
+    paymentMethod: 'crypto',
+    username: who,
+    reason: publicId,
+  });
+  await notifyAdminsOfSale({
+    plan: 'custom_checkout',
+    method: 'crypto',
+    username: who,
+    usd: checkout.amountUsd,
+  });
+}
+
 async function handlePremiumPayment(userId: string, plan: string, paymentId: string) {
   if (!VALID_PLANS.has(plan)) {
     throw new Error(`Invalid premium plan: ${plan}`);
@@ -240,6 +268,11 @@ export async function fulfillNowPayment(body: NowPaymentPayload): Promise<'fulfi
     return 'fulfilled';
   }
 
+  if (parts[0] === 'custom' && parts.length >= 2) {
+    await handleCustomCheckoutPayment(parts[1], payment_id);
+    return 'fulfilled';
+  }
+
   const [userId, plan] = parts;
   await handlePremiumPayment(userId, plan, payment_id);
   return 'fulfilled';
@@ -272,6 +305,11 @@ export async function isPaymentAlreadyFulfilled(body: NowPaymentPayload): Promis
       return e.paymentId === payment_id && e.paymentStatus === 'paid';
     }
     return e.lastPaymentChargeId === payment_id;
+  }
+
+  if (parts[0] === 'custom' && parts.length >= 2) {
+    const c = await CustomCheckout.findOne({ publicId: parts[1] }).select('paymentId status').lean() as { paymentId?: string; status?: string } | null;
+    return c?.status === 'paid' && c?.paymentId === payment_id;
   }
 
   const [userId] = parts;

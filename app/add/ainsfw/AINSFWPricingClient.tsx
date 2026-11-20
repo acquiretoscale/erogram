@@ -10,10 +10,9 @@ import { saveAINSFWListingDraft, type AINSFWFormData } from '@/lib/actions/ainsf
 import { type AINSFWPlan } from '@/lib/ainsfw/planPrices';
 import { normalizeWebsiteUrl } from '@/lib/ainsfw/websiteUrl';
 import { AINSFW_CATEGORIES } from '@/app/ainsfw/types';
-import TrustedByLeaders from '@/app/advertise/TrustedByLeaders';
-import PartnershipStats from '@/app/partnership/PartnershipStats';
 import ErogramWordmark from '@/components/ErogramWordmark';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
+import { FaqPlainAnswer, SubmitFaqItems } from './submitFaq';
 
 // Match the /ainsfw directory vibe: green accent on dark-green surfaces
 const ACCENT      = '#22c55e';
@@ -42,137 +41,44 @@ function countryCodeToFlag(code: string): string {
   return String.fromCodePoint(...upper.split('').map((char) => 0x1f1e6 + char.charCodeAt(0) - 65));
 }
 
-const SUBMIT_FAQ: { q: string; a: ReactNode }[] = [
-  {
-    q: 'Can you list our AI tool for free or in exchange for a high affiliate commission?',
-    a: (
-      <>
-        <p>
-          We receive dozens of emails from amazing AI tools and adult websites asking for promotional opportunities in exchange for very high affiliate commissions, revenue shares, and similar offers.
-        </p>
-        <p className="mt-3">Unfortunately, our priority is to allocate visibility to our paying clients and partners.</p>
-        <p className="mt-3">
-          Our pricing is extremely competitive, even for a basic listing, and unlike many other websites, we offer a{' '}
-          <strong className="text-white/90 font-semibold">lifetime placement</strong> rather than charging monthly or yearly fees.
-        </p>
-        <p className="mt-3">It&apos;s a small investment for long-term exposure and SEO benefits for your website.</p>
-        <p className="mt-3">
-          If you have any questions, feel free to reach out to us at{' '}
-          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
-          {' '}or on Telegram at{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@erogramDOTpro</a>.
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'I\'m scaling and need a lot of traffic. What\'s the maximum traffic EROGRAMX can deliver?',
-    a: (
-      <>
-        <p>If you&apos;re looking to scale aggressively, our custom advertising packages can deliver significantly more traffic than our standard listing plans. Visit <Link href="/promo" className="text-[#4ade80] hover:underline">Promo page</Link> for more details</p>
-      </>
-    ),
-  },
-  {
-    q: 'What happens when my featured campaign ends?',
-    a: (
-      <>
-        <p>Your permanent listing will remain live on EROGRAMX.</p>
-        <p className="mt-3">Only your featured placements and promotional campaign expire. You can renew or upgrade your campaign at any time through the <Link href="/my-listings" className="text-[#4ade80] hover:underline">My Campaigns</Link> dashboard.</p>
-        <p className="mt-3">
-          If you need help choosing the right package, contact us at{' '}
-          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
-          {' '}or message us on Telegram:{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@erogramDOTpro</a>.
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'I purchased Basic or BOOST. How long before my tool is live?',
-    a: (
-      <>
-        <p>Most listings go live in less than 24h. All listings get reviewed and optimized by our team for better result.</p>
-      </>
-    ),
-  },
-  {
-    q: 'Can I edit my listing after it\'s published?',
-    a: (
-      <>
-        <p>Yes. You have full control over your listing after it&apos;s published.</p>
-        <p className="mt-3">
-          You can update your description, links, screenshots, pricing, and other details at any time through your{' '}
-          <Link href="/my-listings" className="text-[#4ade80] hover:underline">My Campaigns</Link> dashboard. Or just reach out to us through Telegram and we will be more than happy to assist{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@erogramDOTpro</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'Do you offer custom advertising opportunities?',
-    a: (
-      <>
-        <p>Yes.</p>
-        <p className="mt-3">We offer banner advertising, native placements, homepage takeovers, sponsored editorial content, Telegram promotions, video ads, launch campaigns, and fully customized advertising packages for brands looking to scale.</p>
-        <p className="mt-3">
-          For details on placements, pricing, and packages, visit our{' '}
-          <Link href="/promo" className="text-[#4ade80] hover:underline">Promo page</Link>.
-        </p>
-        <p className="mt-3">If you want to maximize exposure, we&apos;d be happy to build a custom campaign around your goals. Feel free to reach out at{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@EROGRAMDOTPRO</a>
-          {' '}on Telegram or{' '}
-          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'I can\'t find an answer to my question.',
-    a: (
-      <>
-        <p>
-          Still have questions we haven&apos;t covered? No problem! Feel free to reach out to our team on{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">Telegram</a>
-          {' '}or by email at{' '}
-          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
-          . We&apos;re happy to help.
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'My website isn\'t AI NSFW. Do you have sections for other categories?',
-    a: (
-      <>
-        <p>
-          Absolutely! We also offer listings with do-follow backlinks in our{' '}
-          <Link href="/best-porn" className="text-[#4ade80] hover:underline">Porn Websites</Link>
-          {' '}section, provided your website fits one of our existing categories, such as cam sites, porn sites, JAV, Asian, and more.
-        </p>
-      </>
-    ),
-  },
-];
-
-export function AinsfwSubmitFaq({ tone = 'green', lightPage = false }: { tone?: 'green' | 'blue'; lightPage?: boolean }) {
+export function AinsfwSubmitFaq({
+  tone = 'green',
+  lightPage = false,
+  promoFaq = [],
+}: {
+  tone?: 'green' | 'blue';
+  lightPage?: boolean;
+  promoFaq?: { q: string; a: string }[];
+}) {
   const blue = tone === 'blue';
+  const borderClass = blue ? 'border border-[#00AFF0]/20 bg-[#111B2E]' : 'border border-[#22c55e]/15 bg-[#0a1f12]';
   return (
     <section className="mt-8 mb-10 max-w-3xl mx-auto">
       <h2 className={`text-xl sm:text-2xl font-black mb-6 text-center ${lightPage ? 'text-black' : 'text-white'}`}>Frequently Asked Questions</h2>
       <div className="space-y-3">
-        {SUBMIT_FAQ.map((faq) => (
+        <SubmitFaqItems borderClass={borderClass} />
+        {promoFaq.map((faq) => (
           <details
             key={faq.q}
-            className={`group rounded-xl overflow-hidden ${
-              blue ? 'border border-[#00AFF0]/20 bg-[#111B2E]' : 'border border-[#22c55e]/15 bg-[#0a1f12]'
-            }`}
+            className={`group rounded-xl overflow-hidden ${borderClass}`}
           >
             <summary className="flex items-center justify-between gap-4 cursor-pointer px-5 py-4 text-white font-semibold text-base sm:text-base list-none [&::-webkit-details-marker]:hidden">
               <span>{faq.q}</span>
               <svg className="w-5 h-5 sm:w-4 sm:h-4 shrink-0 text-white/50 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </summary>
-            <div className={`px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed ${blue ? '[&_a]:text-[#00AFF0]' : ''}`}>{faq.a}</div>
+            <div className="px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed whitespace-pre-line">
+              <FaqPlainAnswer text={faq.a} linkClassName="font-black text-[#4ade80] underline" />
+              {faq.q.includes('SEO benefits from Erogram') ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/assets/promo/mediakit-ga4-rebrand-impact.png?hq=3"
+                  alt="Google Analytics trend of event count after Erogram migration"
+                  width={807}
+                  height={1024}
+                  className="mt-4 block h-auto w-full max-w-md rounded-md"
+                />
+              ) : null}
+            </div>
           </details>
         ))}
       </div>
@@ -399,7 +305,7 @@ function CompactHeroStats({
           {!hideTopVisual && (heroMascot ? (
             <div className="flex justify-center py-4 sm:py-5">
               <Image
-                src="/assets/erogram-gold-mascot.png"
+                src="/assets/erogram-gold-mascot.webp"
                 alt=""
                 width={530}
                 height={502}
@@ -693,15 +599,14 @@ type SubmitAutosave = {
 };
 
 export default function AINSFWPricingClient({
-  aiNsfwCount,
-  groupsAndBotsCount,
-  totalUsers,
   pageVariant = 'submit',
+  promoFaq = [],
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
   totalUsers: number;
   pageVariant?: 'submit' | 'advertise';
+  promoFaq?: { q: string; a: string }[];
 }) {
   const isAdvertise = pageVariant === 'advertise';
   const [advertiseSection, setAdvertiseSection] = useState<'ai-tg' | 'onlyfans'>('ai-tg');
@@ -1047,59 +952,15 @@ export default function AINSFWPricingClient({
         )}
 
         {/* HERO */}
-        <div className={isAdvertise ? 'w-full max-w-3xl mx-auto flex flex-col items-center gap-6 sm:gap-8' : 'mb-10 flex flex-col gap-8 sm:gap-10'}>
-          {!isAdvertise ? (
-            <div className="w-full max-w-xl sm:max-w-2xl mx-auto overflow-hidden rounded-2xl border shadow-[0_16px_40px_-20px_rgba(0,40,80,0.55)]" style={{ borderColor: SUBMIT_NAVY_BORDER, background: SUBMIT_NAVY }}>
-              <CompactHeroStats
-                views={visitorStats.views}
-                last30dAdClicks={visitorStats.last30dAdClicks}
-                flush
-                flushBlue
-                heroMascot
-                hideTopVisual
-              />
-              <PartnershipStats
-                aiNsfwCount={aiNsfwCount}
-                groupsAndBotsCount={groupsAndBotsCount}
-                totalUsers={totalUsers}
-                variant="onlyfans"
-                embedded
-                redBrandX
-                combineListings
-                listingsCount={4800}
-                hideUsers
-                whiteStats
-                compact
-                liveAudience={
-                  visitorStats.views != null
-                    ? { pageViews: visitorStats.views, activeVisitors: visitorStats.liveNow ?? 0 }
-                    : null
-                }
-                geo={{
-                  text: 'TOP GEOS:',
-                  label: (
-                    <span
-                      className="text-[17px] leading-none"
-                      style={{
-                        color: 'black',
-                        fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-                      }}
-                    >
-                      🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
-                    </span>
-                  ),
-                }}
-              />
-              <TrustedByLeaders variant="onlyfans" embedded whiteBg />
-            </div>
-          ) : (
+        <div className={isAdvertise ? 'w-full max-w-3xl mx-auto flex flex-col items-center gap-6 sm:gap-8' : 'mb-6'}>
+          {isAdvertise ? (
             <CompactHeroStats
               views={visitorStats.views}
               last30dAdClicks={visitorStats.last30dAdClicks}
               compact={isAdvertise}
               flushBlue
             />
-          )}
+          ) : null}
 
           {isAdvertise ? (
             <>
@@ -1174,7 +1035,7 @@ export default function AINSFWPricingClient({
         <>
         <div className="flex justify-center mb-4">
           <Image
-            src="/assets/erogram-gold-mascot.png"
+            src="/assets/erogram-gold-mascot.webp"
             alt=""
             width={530}
             height={502}
@@ -1487,16 +1348,7 @@ export default function AINSFWPricingClient({
           </div>
         )}
 
-        <AinsfwSubmitFaq tone="blue" />
-        <div className="mt-8 mb-2 flex justify-center px-4">
-          <Image
-            src="/assets/erogram-discovery-hub-banner.webp"
-            alt=""
-            width={1024}
-            height={225}
-            className="w-full max-w-md sm:max-w-lg h-auto opacity-60"
-          />
-        </div>
+        <AinsfwSubmitFaq tone="blue" promoFaq={promoFaq} />
         </>
         )}
 

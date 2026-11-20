@@ -85,6 +85,7 @@ export async function notifyAdminsOfSale(payload: SaleNotificationPayload) {
     ainsfw_startup: 'AI NSFW Scale',
     ainsfw_platinum: 'AI NSFW Platinum',
     featured_creator: 'Featured Creator',
+    custom_checkout: 'Custom Checkout',
     slutbot_ecstasy: 'SLUTBOT Ecstasy',
     slutbot_passion: 'SLUTBOT Passion',
     slutbot_desire: 'SLUTBOT Desire',

@@ -96,15 +96,20 @@ export default function TrustedByLeaders({
           className={
             promoLargeLogos && manySponsors
               ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3 w-full items-stretch'
+              : compact && sponsors.length <= 3
+              ? 'grid grid-cols-3 gap-2 w-full items-stretch'
               : manySponsors && (isGreen || isOnlyfans)
               ? 'grid grid-cols-6 gap-1.5 sm:gap-2 w-full items-center'
               : manySponsors
                 ? 'flex flex-row flex-wrap items-center justify-center w-full gap-2 sm:gap-2.5 md:gap-3'
-                : `flex flex-col items-center justify-center mx-auto sm:flex-row sm:justify-between max-w-2xl ${isGreen || isOnlyfans ? 'gap-5 sm:gap-4' : 'gap-10 sm:gap-8'}`
+                : compact
+                  ? `flex flex-row items-center justify-center mx-auto w-full gap-3 sm:gap-4 ${isGreen || isOnlyfans ? '' : ''}`
+                  : `flex flex-col items-center justify-center mx-auto sm:flex-row sm:justify-between max-w-2xl ${isGreen || isOnlyfans ? 'gap-5 sm:gap-4' : 'gap-10 sm:gap-8'}`
           }
         >
           {sponsors.map((sponsor) => {
-            const useWhiteTile = promoLargeLogos || ((isGreen || isOnlyfans) && manySponsors);
+            const useWhiteTile =
+              promoLargeLogos || (whiteBg && compact) || ((isGreen || isOnlyfans) && manySponsors);
             const tileClass = useWhiteTile
               ? whiteBg
                 ? promoLargeLogos
@@ -115,11 +120,14 @@ export default function TrustedByLeaders({
                 : 'rounded-md bg-white h-10 sm:h-12 w-full flex items-center justify-center p-1.5 sm:p-2 shadow-[0_1px_6px_-1px_rgba(0,0,0,0.22)]'
               : '';
 
-            const uniformTileImage = `max-h-full max-w-full object-contain object-center${sponsor.colored ? '' : ' brightness-0'}`;
+            const logoFilter = sponsor.colored || whiteBg ? '' : ' brightness-0';
+            const uniformTileImage = `max-h-full max-w-full object-contain object-center${logoFilter}`;
             const imageClass = promoLargeLogos && useWhiteTile
-              ? `max-h-9 sm:max-h-10 w-full max-w-[120px] sm:max-w-[140px] object-contain object-center${sponsor.colored ? '' : ' brightness-0'}`
+              ? `max-h-9 sm:max-h-10 w-full max-w-[120px] sm:max-w-[140px] object-contain object-center${logoFilter}`
               : useWhiteTile
-              ? uniformTileImage
+              ? compact
+                ? `max-h-7 sm:max-h-8 w-full max-w-[96px] object-contain object-center mx-auto${logoFilter}`
+                : uniformTileImage
               : isOnlyfans
               ? manySponsors
                 ? 'h-7 sm:h-8 md:h-9 w-auto max-w-[108px] sm:max-w-[128px] md:max-w-[152px] object-contain object-center'
@@ -129,7 +137,9 @@ export default function TrustedByLeaders({
                   ? 'h-5 sm:h-6 w-auto max-w-[72px] sm:max-w-[88px] object-contain object-center brightness-0 invert opacity-70 transition-all duration-300 group-hover:opacity-100'
                   : 'h-5 sm:h-6 w-auto max-w-[72px] sm:max-w-[88px] object-contain object-center grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100'
                 : isGreen
-                  ? 'h-6 sm:h-7 w-auto max-w-[120px] sm:max-w-[140px] object-contain object-center brightness-0 invert opacity-70 transition-all duration-300 group-hover:opacity-100'
+                  ? whiteBg
+                    ? `h-6 sm:h-7 w-auto max-w-[120px] sm:max-w-[140px] object-contain object-center${logoFilter}`
+                    : 'h-6 sm:h-7 w-auto max-w-[120px] sm:max-w-[140px] object-contain object-center brightness-0 invert opacity-70 transition-all duration-300 group-hover:opacity-100'
                   : 'h-8 sm:h-9 md:h-10 w-auto max-w-[130px] sm:max-w-[160px] object-contain object-center grayscale opacity-60 transition-all duration-300 group-hover:grayscale-0 group-hover:opacity-100';
 
             const href = sponsor.slug ? `/ainsfw/${sponsor.slug}` : undefined;

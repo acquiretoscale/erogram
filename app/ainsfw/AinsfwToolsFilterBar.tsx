@@ -63,7 +63,7 @@ export default function AinsfwToolsFilterBar({
     !!search.trim();
 
   return (
-    <div className="mb-10 sm:mb-14 rounded-2xl border border-[#22c55e]/15 bg-[#0a1f12] p-4 sm:p-5">
+    <div className="mb-2 rounded-2xl border border-[#22c55e]/15 bg-[#0a1f12] p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         <div className="relative shrink-0">
           <select

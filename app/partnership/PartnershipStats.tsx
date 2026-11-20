@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState, type ReactNode } from 'react';
 
 const THEMES = {
@@ -49,8 +50,20 @@ function buildStatDefs(
   hideUsers?: boolean,
   liveAudience?: { pageViews: number; activeVisitors: number } | null,
   monthlyVisitsText = '250 to 300K',
+  hideTelegramSubscribers = false,
+  hideGeos = false,
+  aiNsfwOnlyListings = false,
 ): StatDef[] {
-  const listingStats: StatDef[] = combineListings
+  const listingStats: StatDef[] = aiNsfwOnlyListings
+    ? [{
+        id: 'ainsfw',
+        label: 'Total AI NSFW tools listed on Erogram',
+        type: 'count',
+        target: aiNsfwCount,
+        format: (n) => `${Math.round(n).toLocaleString()}+`,
+        live: true,
+      }]
+    : combineListings
     ? [{
         id: 'listings',
         label: 'Total AI NSFW tools, TG groups & bots and adult websites listing.',
@@ -88,11 +101,15 @@ function buildStatDefs(
   const stats: StatDef[] = [
     ...liveStats,
     { id: 'visits', label: 'Monthly Visits', type: 'text', text: monthlyVisitsText },
-    { id: 'tier1', label: geo?.label ?? TOP_GEO_FLAGS, type: 'text', text: geo?.text ?? 'TOP GEOS:' },
+    ...(hideGeos
+      ? []
+      : [{ id: 'tier1', label: geo?.label ?? TOP_GEO_FLAGS, type: 'text' as const, text: geo?.text ?? 'TOP GEOS:' }]),
     ...(hideUsers
       ? []
       : [{ id: 'users', label: <><span className={`font-black ${whiteBg ? 'text-black' : 'text-white'}`}>EROGRAM</span><span className="font-black text-red-500">X</span> users</>, type: 'count' as const, target: totalUsers, format: (n: number) => Math.round(n).toLocaleString('en-US'), live: true }]),
-    { id: 'telegram', label: 'Subscribers across our Telegram network', type: 'count', target: 30, format: (n) => `${Math.round(n)}K+` },
+    ...(hideTelegramSubscribers
+      ? []
+      : [{ id: 'telegram', label: 'Subscribers across our Telegram network', type: 'count' as const, target: 30, format: (n: number) => `${Math.round(n)}K+` }]),
     ...listingStats,
   ];
   if (pageViews !== undefined) {
@@ -163,17 +180,23 @@ function StatValue({
   accent,
   staticColor,
   valueTextClass,
+  emphasizeMonthlyVisits = false,
 }: {
   stat: StatDef;
   active: boolean;
   accent: string;
   staticColor: string;
   valueTextClass: string;
+  emphasizeMonthlyVisits?: boolean;
 }) {
   if (stat.type === 'text') {
+    const visitsEmphasis =
+      emphasizeMonthlyVisits && stat.id === 'visits'
+        ? 'text-xl sm:text-2xl text-[#16a34a] tracking-tight'
+        : '';
     return (
       <span
-        className={`font-black leading-none shrink-0 whitespace-nowrap transition-opacity duration-500 ${valueTextClass} ${active ? 'opacity-100' : 'opacity-0'}`}
+        className={`font-black leading-none shrink-0 whitespace-nowrap transition-opacity duration-500 ${valueTextClass} ${visitsEmphasis} ${active ? 'opacity-100' : 'opacity-0'}`}
       >
         {stat.text}
       </span>
@@ -214,6 +237,13 @@ export default function PartnershipStats({
   compact = false,
   monthlyVisitsText,
   stackedRows = false,
+  headerOnly = false,
+  hideReachLabel = false,
+  hideTelegramSubscribers = false,
+  emphasizeMonthlyVisits = false,
+  hideGeos = false,
+  aiNsfwOnlyListings = false,
+  discoveryBannerTitle = false,
 }: {
   aiNsfwCount: number;
   groupsAndBotsCount: number;
@@ -233,9 +263,34 @@ export default function PartnershipStats({
   monthlyVisitsText?: string;
   /** Promo media kit: two columns — name (left), details (right). */
   stackedRows?: boolean;
+  /** Media kit: title bar only — no stat rows below. */
+  headerOnly?: boolean;
+  hideReachLabel?: boolean;
+  hideTelegramSubscribers?: boolean;
+  /** Mediakit: larger green monthly visits figure */
+  emphasizeMonthlyVisits?: boolean;
+  hideGeos?: boolean;
+  aiNsfwOnlyListings?: boolean;
+  /** Mediakit: banner image instead of the EROGRAMX.com title. */
+  discoveryBannerTitle?: boolean;
 }) {
   const theme = THEMES[variant];
-  const stats = buildStatDefs(aiNsfwCount, groupsAndBotsCount, totalUsers, pageViews, geo, combineListings, whiteBg || whiteStats, listingsCount, hideUsers, liveAudience, monthlyVisitsText);
+  const stats = buildStatDefs(
+    aiNsfwCount,
+    groupsAndBotsCount,
+    totalUsers,
+    pageViews,
+    geo,
+    combineListings,
+    whiteBg || whiteStats,
+    listingsCount,
+    hideUsers,
+    liveAudience,
+    monthlyVisitsText,
+    hideTelegramSubscribers,
+    hideGeos,
+    aiNsfwOnlyListings,
+  );
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -269,15 +324,26 @@ export default function PartnershipStats({
       }
       style={{ backgroundColor: surfaceBg }}
     >
+      {discoveryBannerTitle ? (
+        <Image
+          src="/assets/erogram-discovery-hub-banner.webp"
+          alt="EROGRAM Adult Entertainment Discovery Hub"
+          width={1024}
+          height={225}
+          className="block h-auto w-full"
+        />
+      ) : (
       <div
         className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b ${theme.borderClass} ${
           compact ? 'px-3 py-1.5 sm:px-4' : 'px-4 py-3 sm:px-5'
         }`}
         style={{ background: headerBg }}
       >
-        <span className="text-[9px] font-bold tracking-[0.28em] uppercase" style={{ color: theme.accent }}>
-          Reach
-        </span>
+        {!hideReachLabel ? (
+          <span className="text-[9px] font-bold tracking-[0.28em] uppercase" style={{ color: theme.accent }}>
+            Reach
+          </span>
+        ) : null}
         <h2 className={`font-black text-[1rem] sm:text-[1.1rem] leading-none tracking-tight ${headerTextClass}`}>
           {redBrandX ? (
             <>
@@ -290,28 +356,30 @@ export default function PartnershipStats({
           )}
         </h2>
       </div>
+      )}
 
-      {stackedRows ? (
+      {headerOnly ? null : stackedRows ? (
         <div className="flex flex-col">
-          <div
-            className={`grid grid-cols-2 gap-4 border-b border-black/10 ${
-              compact ? 'px-4 py-2 sm:px-5' : 'px-4 py-2.5 sm:px-5'
-            }`}
-            style={{ background: statBg }}
-          >
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45">Name</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45 text-right">Details</span>
-          </div>
+          {!compact ? (
+            <div
+              className="grid grid-cols-2 gap-4 border-b border-black/10 px-4 py-2.5 sm:px-5"
+              style={{ background: statBg }}
+            >
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45">Name</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/45 text-right">Details</span>
+            </div>
+          ) : null}
           {stats.map((stat) => {
+            const labelTextClass = compact ? 'text-[11px] leading-snug' : 'text-sm leading-snug';
             const name =
               stat.id === 'tier1' && stat.type === 'text' ? (
-                <span className="text-sm font-semibold text-black leading-snug">{stat.text}</span>
+                <span className={`font-semibold text-black ${labelTextClass}`}>{stat.text}</span>
               ) : (
-                <span className={`text-sm font-semibold leading-snug min-w-0 ${labelClass}`}>{stat.label}</span>
+                <span className={`font-semibold min-w-0 ${labelClass} ${labelTextClass}`}>{stat.label}</span>
               );
             const details = active ? (
               stat.id === 'tier1' && stat.type === 'text' ? (
-                <span className="text-sm font-semibold text-black leading-snug text-right">{stat.label}</span>
+                <span className={`font-semibold text-black text-right ${labelTextClass}`}>{stat.label}</span>
               ) : (
                 <div className="flex justify-end">
                   <StatValue
@@ -320,6 +388,7 @@ export default function PartnershipStats({
                     accent={theme.accent}
                     staticColor={staticColor}
                     valueTextClass={valueTextClass}
+                    emphasizeMonthlyVisits={emphasizeMonthlyVisits}
                   />
                 </div>
               )
@@ -331,8 +400,8 @@ export default function PartnershipStats({
             return (
               <div
                 key={stat.id}
-                className={`grid grid-cols-2 gap-4 items-center ${cellBorderClass} ${
-                  compact ? 'px-4 py-2.5 sm:px-5 sm:py-3' : 'px-4 py-3 sm:px-5'
+                className={`grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:gap-3 items-center ${cellBorderClass} ${
+                  compact ? 'px-3 py-2 sm:px-4' : 'px-4 py-3 sm:px-5'
                 }`}
                 style={{ background: stat.live ? liveStatBg : statBg }}
               >
@@ -368,6 +437,7 @@ export default function PartnershipStats({
                       accent={theme.accent}
                       staticColor={staticColor}
                       valueTextClass={`${valueTextClass} text-xl sm:text-[1.15rem]`}
+                      emphasizeMonthlyVisits={emphasizeMonthlyVisits}
                     />
                   ) : (
                     <StatSkeleton whiteBg={whiteBg} />

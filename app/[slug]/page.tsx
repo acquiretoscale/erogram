@@ -33,6 +33,7 @@ import { getExploreSiteAlternatives, exploreSiteListingPath } from '@/lib/explor
 import { resolveExploreListingByRootSlug } from '@/lib/actions/exploreAdmin';
 import { resolveExploreListingVisitRel } from '@/lib/actions/linkExchangePartners';
 import { getHomeFeaturedOfCreator } from '@/lib/explore/getHomeFeaturedOfCreator';
+import { getAinsfwTrending } from '@/lib/actions/ainsfwTrending';
 
 // Pre-built at deploy (all approved groups + bots via generateStaticParams below)
 // + background refresh every 5 minutes (ISR): Google sees stable server HTML like
@@ -805,13 +806,14 @@ export default async function JoinPage({ params }: PageProps) {
       };
     }
 
-    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages, joinFeaturedOfCreator] = await Promise.all([
+    const [joinCtaCampaigns, topBannerCampaigns, vaultTeaser, featuredCreators, rankingCoverImages, joinFeaturedOfCreator, trendingTools] = await Promise.all([
       getActiveCampaigns('join-cta'),
       getActiveCampaigns('top-banner', { page: 'group', device: isMobile ? 'mobile' : 'desktop' }),
       getVaultTeaser(),
       getTrendingCreators().catch(() => []),
       getRankingCoverImages(),
       getHomeFeaturedOfCreator(),
+      getAinsfwTrending(),
     ]);
     const joinCtaCampaign = joinCtaCampaigns[0] ?? null;
     const topBannerForPage =
@@ -838,7 +840,7 @@ export default async function JoinPage({ params }: PageProps) {
             />
           </>
         )}
-        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} rankingCoverImages={rankingCoverImages} joinFeaturedOfCreator={joinFeaturedOfCreator} />
+        <JoinClient entity={group} type="group" similarGroups={similarGroups} initialIsMobile={isMobile} initialIsTelegram={isTelegram} joinCtaCampaign={joinCtaCampaign} topBannerCampaigns={topBannerForPage} isDeleted={group.status === 'deleted'} vaultTeaser={vaultTeaser} featuredCreators={sidebarCreators} rankingCoverImages={rankingCoverImages} joinFeaturedOfCreator={joinFeaturedOfCreator} trendingTools={trendingTools} />
       </>
     );
   }

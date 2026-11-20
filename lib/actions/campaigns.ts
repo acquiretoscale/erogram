@@ -85,7 +85,7 @@ async function buildOFEnrichMap(ofUsernames: string[]): Promise<Map<string, OFEn
 
 const SLOT_LIMITS: Record<string, number> = {
   // Global banner shown across the site (Bots/Groups/Articles/Join pages)
-  'top-banner': 2,
+  'top-banner': 4,
   'homepage-hero': 1,
   feed: 12, // 3 slots x up to 4 A/B variants each
   'navbar-cta': 1,

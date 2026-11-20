@@ -19,6 +19,7 @@ import AinsfwReviewStars from '@/components/ainsfw/AinsfwReviewStars';
 import VerifiedBadge, { AINSFW_VERIFIED_TOOLTIP } from '@/components/VerifiedBadge';
 import AinsfwVideoListingBadge from '@/components/ainsfw/AinsfwVideoListingBadge';
 import { ainsfwCtaButtonClass } from '@/lib/ainsfw/ctaButton';
+import { ainsfwListingLinkRel } from '@/lib/ainsfw/listingFollow';
 
 // PAUSED (2026-07-24, owner order) — see AdvertCard.tsx. Flip to false to resume.
 const IMPRESSION_TRACKING_PAUSED = true;
@@ -35,8 +36,10 @@ interface ToolCardProps {
   light?: boolean;
   /** Featured-on-Erogram hub row: green-tinted card so the spotlight reads apart from the grid. */
   spotlight?: boolean;
-  /** Featured on Erogram row only. Try Now opens the listing website. Details stays tiny. */
+  /** Featured-row card style. The pink button stays on Erogram unless outboundCta is set. */
   hubCta?: boolean;
+  /** Homepage featured row only. Pink button opens the listing website. */
+  outboundCta?: boolean;
   listingHref?: string;
   compact?: boolean;
 }
@@ -163,8 +166,9 @@ function ToolCardPreviewVideo({
   );
 }
 
-export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false, hubCta = false, listingHref, compact = false }: ToolCardProps) {
+export default function ToolCard({ tool, index, initialStats, onVoteChange, featured, campaignId, verified = false, light = false, spotlight = false, hubCta = false, outboundCta = false, listingHref, compact = false }: ToolCardProps) {
   const detailHref = listingHref || `/ainsfw/${tool.slug}`;
+  const listingRel = ainsfwListingLinkRel(tool.createdAt);
   const { t } = useTranslation();
   const [canEdit, setCanEdit] = useState(false);
   useEffect(() => {
@@ -447,7 +451,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
           transition={{ duration: 0.4, delay: index * 0.04 }}
           className="h-full"
         >
-          <Link href={detailHref} className="block h-full" onClick={handleFeaturedClick}>
+          <Link href={detailHref} target="_blank" rel={listingRel} className="block h-full" onClick={handleFeaturedClick}>
             <div
               ref={cardRef}
               className="group relative h-full rounded-xl overflow-hidden border border-white/10 hover:border-[#22c55e]/40 transition-all flex flex-col bg-[#0a0a0a]"
@@ -615,7 +619,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                 Edit
               </Link>
             ) : null}
-            <Link href={detailHref} className="flex flex-col flex-grow min-h-0">
+            <Link href={detailHref} target="_blank" rel={listingRel} className="flex flex-col flex-grow min-h-0">
             <div
               className={imageShell}
               onTouchStart={isVideoCard ? undefined : handleTouchStart}
@@ -754,7 +758,7 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
             </Link>
             {hubCta && (
               <div className="mt-auto px-2.5 sm:px-3 pb-2.5 sm:pb-3 pt-0.5">
-                {hubSiteIsLink ? (
+                {outboundCta && hubSiteIsLink ? (
                   <a
                     href={hubSiteUrl}
                     target="_blank"
@@ -765,9 +769,14 @@ export default function ToolCard({ tool, index, initialStats, onVoteChange, feat
                     {ctaLabel}
                   </a>
                 ) : (
-                  <div className="flex items-center justify-center w-full min-h-[44px] py-3 px-2 bg-[#e8307e] text-white text-[13px] sm:text-sm font-black uppercase tracking-wide whitespace-nowrap leading-none rounded-none border-[3px] border-black shadow-[4px_4px_0_0_#000]">
+                  <Link
+                    href={detailHref}
+                    target="_blank"
+                    rel={listingRel}
+                    className="flex items-center justify-center w-full min-h-[44px] py-3 px-2 bg-[#e8307e] text-white text-[13px] sm:text-sm font-black uppercase tracking-wide whitespace-nowrap leading-none rounded-none border-[3px] border-black shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-[transform,box-shadow] duration-75"
+                  >
                     {ctaLabel}
-                  </div>
+                  </Link>
                 )}
               </div>
             )}

@@ -8,6 +8,7 @@ type InlineSocialShareProps = {
   emailSubject: string;
   fallbackUrl: string;
   accentColor?: string;
+  omit?: Array<'x' | 'reddit' | 'whatsapp' | 'telegram' | 'email'>;
 };
 
 const iconBtn =
@@ -18,6 +19,7 @@ export default function InlineSocialShare({
   emailSubject,
   fallbackUrl,
   accentColor = '#22c55e',
+  omit = [],
 }: InlineSocialShareProps) {
   const [pageUrl, setPageUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -94,9 +96,11 @@ export default function InlineSocialShare({
     },
   ];
 
+  const visible = links.filter((link) => !omit.includes(link.key as 'x' | 'reddit' | 'whatsapp' | 'telegram' | 'email'));
+
   return (
     <div className="flex items-center gap-1 sm:gap-1.5">
-      {links.map(({ key, label, href, icon, external = true }) => (
+      {visible.map(({ key, label, href, icon, external = true }) => (
         <a
           key={key}
           href={href}

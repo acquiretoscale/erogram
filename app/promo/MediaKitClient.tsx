@@ -1,161 +1,33 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ErogramDiscoveryBanner from '@/components/ErogramDiscoveryBanner';
 import ErogramDevilGirlFooter from '@/components/ErogramDevilGirlFooter';
 import Footer from '@/components/Footer';
 import AdvertiseStats from './AdvertiseStats';
 import PartnershipStats from '../partnership/PartnershipStats';
-import TrustedByLeaders from '../advertise/TrustedByLeaders';
-import InFeedAdFormatComparison from '../add/ainsfw/InFeedAdFormatComparison';
+import TrustedByLeaders, { type TrustedSponsor } from '../advertise/TrustedByLeaders';
+import BasicBoostedListingComparison from './BasicBoostedListingComparison';
+import MediaKitSeoAudienceOverview from './MediaKitSeoAudienceOverview';
 import { PROMO_BORDER, PROMO_CTA, PROMO_SHADOW, PROMO_HEADER_BG, PROMO_ACCENT } from './promoTheme';
+import type { MediaKitContent } from '@/lib/mediakit/types';
+import MediaKitEditProvider from '@/components/mediakit/MediaKitEditProvider';
+import EditableText from '@/components/mediakit/EditableText';
+import { FaqPlainAnswer, SubmitFaqItems } from '@/app/add/ainsfw/submitFaq';
+import { useMediaKitEdit } from '@/components/mediakit/MediaKitEditProvider';
 
 const ACCENT = '#22c55e';
 const BORDER = '3px solid #000000';
 const SHADOW = '4px 4px 0px #000000';
-const SHADOW_LG = '6px 6px 0px #000000';
 const PLAN_HEADER_BG = 'linear-gradient(160deg, #04140c 0%, #0a2e1a 60%, #064e3b 100%)';
 const CTA = '#facc15';
 
-function BrandX() {
-  return (
-    <>
-      <span className="font-black text-white">EROGRAM</span>
-      <span className="font-black text-red-500">X</span>
-    </>
-  );
-}
-
-const PROMO_FAQ: { q: ReactNode; a: ReactNode }[] = [
-  {
-    q: 'Can you list our AI tool for free or in exchange for a high affiliate commission?',
-    a: (
-      <>
-        <p>We receive dozens of requests daily to list AI tools for free in exchange for high affiliate commissions. Unfortunately, we don&apos;t offer commission-based listings.</p>
-        <p className="mt-3">To keep <BrandX /> fair and accessible to everyone, we&apos;ve intentionally priced our Basic plan as low as possible so great projects of all sizes can get listed.</p>
-        <p className="mt-3">If you&apos;re looking for a free option, we also offer free standard listings for eligible AI tools that display a small{' '}
-          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on <BrandX />&quot; badge</Link>
-          {' '}on their website&apos;s Footer or sidebar. All submissions are subject to editorial review.</p>
-      </>
-    ),
-  },
-  {
-    q: <>I&apos;m scaling and need a lot of traffic. What&apos;s the maximum traffic <BrandX /> can deliver?</>,
-    a: (
-      <>
-        <p>If you&apos;re looking to scale aggressively, our custom advertising packages can deliver significantly more traffic than our standard listing plans.</p>
-        <p className="mt-3">Campaigns starting at $1,800/month typically begin around 20,000 monthly clicks. Depending on your budget, campaign performance, and available inventory, we can currently scale up to 80,000 clicks per month.</p>
-        <p className="mt-3">Traffic is delivered across the <BrandX /> ecosystem, including our website, native placements, banner inventory, and our Telegram network with over 30,000 subscribers.</p>
-      </>
-    ),
-  },
-  {
-    q: 'How much traffic can I expect?',
-    a: (
-      <>
-        <p>Traffic depends on your package, category, and the quality of your listing.</p>
-        <p className="mt-3">Standard listings typically receive ongoing organic traffic from Google and <BrandX /> visitors, while featured placements generate significantly more visibility. Larger advertising campaigns can deliver anywhere from a few thousand monthly visitors to tens of thousands of targeted clicks.</p>
-      </>
-    ),
-  },
-  {
-    q: 'What happens when my featured campaign ends?',
-    a: (
-      <>
-        <p>Your permanent listing will remain live on <BrandX />.</p>
-        <p className="mt-3">Only your featured placements and promotional campaign expire. You can renew or upgrade your campaign at any time through the <Link href="/my-listings" className="text-[#4ade80] hover:underline">My Campaigns</Link> dashboard.</p>
-        <p className="mt-3">
-          If you need help choosing the right package, contact us at{' '}
-          <a href="mailto:isabella@erogram.biz" className="text-[#4ade80] hover:underline">isabella@erogram.biz</a>
-          {' '}or message us on Telegram:{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@erogramDOTpro</a>.
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'What are In-Feed Ads?',
-    a: (
-      <>
-        <p>In-Feed Ads are native promotional cards displayed throughout <BrandX />&apos;s highest-traffic pages, including AI Tools, Bots, Groups, and other discovery feeds.</p>
-        <p className="mt-3">They blend naturally with our content while giving your project premium visibility.</p>
-      </>
-    ),
-  },
-  {
-    q: 'What does an editorial blog post look like?',
-    a: (
-      <>
-        <p>You can see an example here:</p>
-        <p className="mt-3">
-          <Link href="/blog/why-millions-are-switching-to-ai-companionship-lately" className="text-[#4ade80] hover:underline">
-            Why Millions Are Switching to AI Companionship Lately
-          </Link>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'What does a listing with a review look like?',
-    a: (
-      <>
-        <p>Here&apos;s an example of one of our SEO-optimized product reviews:</p>
-        <p className="mt-3">
-          <Link href="/ainsfw/joi-ai-nude-generator" className="text-[#4ade80] hover:underline">
-            Listing with review example
-          </Link>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'I purchased Boost or Authority. How long before my tool is featured?',
-    a: (
-      <>
-        <p>Your listing is usually approved immediately after submission.</p>
-        <p className="mt-3">Featured placements, homepage promotion, editorial reviews, and advertising campaigns are configured manually by our team to maximize visibility and performance. Most campaigns go live within a few hours, and always within 24 hours.</p>
-      </>
-    ),
-  },
-  {
-    q: 'Can I edit my listing after it\'s published?',
-    a: (
-      <>
-        <p>Yes. You have full control over your listing after it&apos;s published.</p>
-        <p className="mt-3">
-          You can update your description, links, screenshots, pricing, and other details at any time through your{' '}
-          <Link href="/my-listings" className="text-[#4ade80] hover:underline">My Campaigns</Link> dashboard. Or just reach out to us through Telegram and we will be more than happy to assist{' '}
-          <a href="https://t.me/erogramDOTpro" target="_blank" rel="noopener noreferrer" className="text-[#4ade80] hover:underline">@erogramDOTpro</a>
-        </p>
-      </>
-    ),
-  },
-  {
-    q: 'Do you offer custom advertising opportunities?',
-    a: (
-      <>
-        <p>Yes.</p>
-        <p className="mt-3">We offer banner advertising, native placements, homepage takeovers, sponsored editorial content, Telegram promotions, video ads, launch campaigns, and fully customized advertising packages for brands looking to scale.</p>
-        <p className="mt-3">If you&apos;re planning a product launch or want to maximize exposure, we&apos;d be happy to build a custom campaign around your goals.</p>
-      </>
-    ),
-  },
-  {
-    q: 'Can I get listed for free?',
-    a: (
-      <>
-        <p>Yes.</p>
-        <p className="mt-3">Eligible AI tools can receive a free permanent listing by displaying a small{' '}
-          <Link href="/partnership" className="text-[#4ade80] hover:underline">&quot;Featured on <BrandX />&quot; badge</Link>
-          {' '}on their website that links back to <BrandX />.</p>
-        <p className="mt-3">This helps support our platform while giving your project long-term visibility at no cost. All free submissions are manually reviewed before approval.</p>
-        <p className="mt-3">Free listings include a standard listing only. Featured placements, editorial reviews, homepage promotion, and premium advertising are available exclusively through our paid plans.</p>
-      </>
-    ),
-  },
+const MEDIKIT_TRUSTED_SPONSORS: TrustedSponsor[] = [
+  { name: 'Candy AI', logo: '/assets/sponsors/candy-ai.webp', width: 170, height: 36, colored: true, slug: 'candy-ai-ai-girlfriend' },
+  { name: 'Golove', logo: '/assets/sponsors/golove-dark.svg', width: 150, height: 40, colored: true },
+  { name: 'Lovescape', logo: '/assets/sponsors/lovescape.webp', width: 119, height: 36, colored: true, slug: 'lovescape-ai-girlfriend' },
 ];
 
 function CheckMark() {
@@ -166,23 +38,36 @@ function CheckMark() {
   );
 }
 
-const MOVED_A_LA_CARTE_ADDONS: { title: string; price: string; description?: string }[] = [
-  { title: 'Basic Listing', price: '$97', description: 'Lifetime / permanent.' },
-  {
-    title: 'Boosted Listing',
-    price: '$197',
-    description:
-      '1 permanent listing + 1 month featured on your website section (AINSFW or PORN WEBSITE among top 4 results).',
-  },
-  { title: 'LONG Form Editorial Article', price: '$290', description: 'SEO and conversion-optimized editorial article (2,000–3,000 words).' },
-  { title: 'Short Form Article / Review', price: '$190', description: 'SEO and conversion-optimized editorial article (1,000 words).' },
-  { title: 'Banner Ad (AINSFW, Groups, or Bots)', price: '$190/M' },
-  { title: 'Top Menu Button', price: '$290/M' },
-  { title: 'Integrated Ads', price: '(Starts at $197)' },
-  { title: 'Featured on AINSFW / OnlyFans / Bots', price: 'Start at $147/Month' },
-  { title: 'Telegram Boost', price: '$190/M', description: '30-day promotion across our NSFW Telegram network (9 groups, 30,000+ subscribers), with 3 sponsored posts per week.' },
-  { title: 'Pinned Telegram Posts', price: '$290/M', description: 'Keep your promotion pinned for 30 days across our 8 NSFW Telegram groups, ensuring every new member sees your ad first.' },
-];
+function PerformancePackValueBlock({
+  packIndex,
+  price,
+  footerLines,
+}: {
+  packIndex: number;
+  price: string;
+  footerLines: string[];
+}) {
+  const discountLine = footerLines[0];
+
+  return (
+    <div
+      className="mx-6 sm:mx-8 mb-4 mt-auto rounded-md border-2 border-black/10 bg-[#f0fdf4] px-4 py-3 sm:px-5 text-center space-y-1"
+    >
+      <p className="text-base sm:text-lg font-black tabular-nums text-[#15803d]">
+        <EditableText path={`performancePacks.${packIndex}.price`} fallback={price} />
+      </p>
+      {discountLine ? (
+        <p className="text-xs font-medium text-black/55">
+          <EditableText
+            path={`performancePacks.${packIndex}.footerLines.0`}
+            fallback={discountLine}
+            className="block w-full"
+          />
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function PromoContactBlock({ id }: { id?: string }) {
   return (
@@ -223,7 +108,7 @@ function PromoContactBlock({ id }: { id?: string }) {
   );
 }
 
-export default function MediaKitClient({
+function MediaKitBody({
   aiNsfwCount,
   groupsAndBotsCount,
   totalUsers,
@@ -232,14 +117,15 @@ export default function MediaKitClient({
   groupsAndBotsCount: number;
   totalUsers: number;
 }) {
+  const { content } = useMediaKitEdit();
   const [username, setUsername] = useState<string | null>(null);
   const [liveAudience, setLiveAudience] = useState<{ pageViews: number; activeVisitors: number } | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) setUsername(storedUsername);
-    }
+    const storedUsername = localStorage.getItem('username');
+    if (!storedUsername) return;
+    const id = window.setTimeout(() => setUsername(storedUsername), 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   return (
@@ -248,13 +134,27 @@ export default function MediaKitClient({
         <div className="pt-[88px] sm:pt-[96px] pb-3 sm:pb-5">
           <div className="flex items-center justify-center gap-3 sm:gap-4 px-4">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-none">
-              ADVERTISE ON <BrandX />
+              MEDIA KIT
             </h1>
             <ErogramDevilGirlFooter half />
           </div>
         </div>
 
-        <div id="audience-stats" className="max-w-5xl mx-auto px-4 sm:px-8 mb-6">
+        <section className="max-w-2xl mx-auto px-4 sm:px-8 mb-6 text-center text-white/85">
+          <p className="text-lg sm:text-xl font-black text-white leading-snug">
+            Hey there, welcome to EROGRAMX! 👋
+          </p>
+          <p className="mt-3 text-base sm:text-lg font-semibold text-white/90">Thanks for stopping by!</p>
+          <p className="mt-4 text-base sm:text-lg text-white/75 leading-relaxed">
+            If you&apos;ve built an AI tool for adults, you&apos;re in the right place. Every month, hundreds of thousands of people find us on Google while looking for their next AI girlfriend, image generator or spicy chat app. They&apos;re curious, they&apos;re ready to sign up, and I&apos;d love to send them your way.
+          </p>
+          <p className="mt-6 text-base font-semibold text-white/90">Team</p>
+          <p className="mt-1 text-base font-semibold text-white/90">erogram.pro</p>
+          <p className="mt-1 text-base text-white/75">To your success!</p>
+          <hr className="mt-6 border-white/15" />
+        </section>
+
+        <div id="audience-stats" className="max-w-md mx-auto px-4 sm:px-5 mb-6">
           <div
             className="overflow-hidden rounded-lg"
             style={{
@@ -269,188 +169,173 @@ export default function MediaKitClient({
               groupsAndBotsCount={groupsAndBotsCount}
               totalUsers={totalUsers}
               redBrandX
-              combineListings
-              listingsCount={4800}
+              aiNsfwOnlyListings
+              hideGeos
               hideUsers
               embedded
               whiteStats
-              monthlyVisitsText="140K+"
+              stackedRows
+              compact
+              hideReachLabel
+              monthlyVisitsText="180K+"
+              emphasizeMonthlyVisits
+              hideTelegramSubscribers
               liveAudience={liveAudience}
-              geo={{
-                text: 'TOP GEOS:',
-                label: (
-                  <span
-                    className="text-[17px] leading-none"
-                    style={{
-                      color: 'black',
-                      fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',
-                    }}
-                  >
-                    🇺🇸 🇩🇪 🇧🇷 🇳🇱 🇪🇸 🇬🇧 🇨🇦
-                  </span>
-                ),
-              }}
-            />
-            <TrustedByLeaders
-              variant="green"
-              embedded
-              whiteBg
-              promoLargeLogos
-              titleClassName="text-center text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-[#064e3b] mb-3 sm:mb-4"
+              discoveryBannerTitle
             />
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-8 mb-10 space-y-4 text-center">
-          <p className="text-base sm:text-lg text-white/75 leading-relaxed">
-            Stop paying for cold traffic. <BrandX /> connects your AI tool / Adult website with users actively searching for premium AI experiences. Get discovered by thousands of high-intent buyers every day while your listing keeps generating visibility through our rapidly growing Google presence.
-          </p>
-          <div className="pt-2 flex flex-col items-center gap-3">
+        <nav aria-label="Page sections" className="mx-auto mb-14 mt-10 max-w-md px-4 sm:mb-16 sm:mt-14">
+          <ul className="flex flex-col items-center gap-3 text-base sm:text-lg">
+            {[
+              ['#listing-offers-title', 'Our Listing offers'],
+              ['#advertising-offers-title', 'Our Advertising Offers'],
+              ['#audience-overview', 'Audience overview'],
+              ['#performance-offers-title', 'Our Performance Offers'],
+            ].map(([href, label]) => (
+              <li key={href}>
+                <a href={href} className="font-black text-[#4ade80] underline decoration-2 underline-offset-4">
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* ── MOVED FROM /add/ainsfw — organize later ── */}
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 pb-10">
+          <BasicBoostedListingComparison />
+
+          <div className="max-w-3xl mx-auto px-4 sm:px-8 mb-10 text-center">
             <PromoContactBlock id="contact" />
           </div>
         </div>
 
-        {/* ── MOVED FROM /add/ainsfw — organize later ── */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 pb-10">
-          <div className="mt-8 mb-5">
-            <div className="mb-6 sm:mb-8 text-center px-1 sm:px-2">
-              <Image
-                src="/assets/erogram-gold-mascot.jpg"
-                alt=""
-                width={500}
-                height={500}
-                className="mx-auto mb-4 w-[200px] sm:w-[250px] h-auto mix-blend-screen"
-              />
-              <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-[2rem] font-black uppercase tracking-tight text-white leading-snug max-w-4xl mx-auto">
-                GET LISTED ON THE FASTEST GROWING ADULT ENTRETAINEMENT DISCOVERY HUB.
-              </h2>
-            </div>
-          </div>
+        <MediaKitSeoAudienceOverview />
 
-          {/* PRICING GRID */}
-          <div className="mb-5 scroll-mt-24 mt-6 sm:mt-8">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight text-white text-center mb-6">
-              OUR DIFFERENT OFFERS
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 pb-10">
+          <section id="performance-offers" className="mb-5 scroll-mt-28 mt-10 sm:mt-14 mb-12" aria-labelledby="performance-offers-title">
+            <div className="mx-auto mb-4 w-36 sm:w-44">
+              <Image
+                src="/assets/erogram-gold-mascot.webp"
+                alt=""
+                width={530}
+                height={502}
+                className="h-auto w-full"
+              />
+            </div>
+            <h2
+              id="performance-offers-title"
+              className="mb-5 scroll-mt-28 text-center text-xl font-black uppercase tracking-tight text-white sm:mb-6 sm:text-2xl md:text-3xl"
+            >
+              Our Performance Offers
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7 items-stretch mb-12">
-              {/* À LA CARTE ADD-ONS */}
-              <section className="min-w-0 h-full">
-                <div className="overflow-hidden bg-white h-full flex flex-col" style={{ border: BORDER, boxShadow: SHADOW_LG, color: '#000' }}>
-                  <div className="px-4 py-3.5 sm:px-5" style={{ background: PLAN_HEADER_BG }}>
-                    <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-none">À La Carte</h2>
-                    <p className="mt-0.5 text-sm sm:text-base font-black uppercase tracking-wide text-white/45">Growth Add-ons</p>
+            <p
+              className="mb-6 px-6 py-5 text-center text-sm font-semibold text-black/80 sm:px-8 sm:py-6 sm:text-base"
+              style={{ background: '#ffffff', border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}` }}
+            >
+              If performance is your highest priority
+            </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7 items-stretch">
+              {content.performancePacks.map((pack, packIndex) => (
+                <div
+                  key={pack.title}
+                  className="relative flex flex-col overflow-hidden min-w-0 h-full"
+                  style={{ background: '#ffffff', border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}` }}
+                >
+                  <div className="px-6 py-6 sm:px-8 sm:py-8 flex flex-col flex-1 space-y-2 sm:space-y-2.5">
+                    <h2 className="font-black uppercase leading-none tracking-tight text-xl sm:text-2xl text-black flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <EditableText path={`performancePacks.${packIndex}.title`} fallback={pack.title} />
+                      <span className="text-[11px] sm:text-xs font-black tracking-[0.16em] text-[#dc2626]">
+                        <EditableText path={`performancePacks.${packIndex}.slots`} fallback={pack.slots} />
+                      </span>
+                    </h2>
+                    <p className="text-sm sm:text-base font-black tracking-[0.12em] text-[#15803d]">
+                      {pack.title.includes('LITE') ? '8K VISITS · $0.13 CPC' : '25K VISITS · $0.07 CPC'}
+                    </p>
+                    {pack.intro.trim() ? (
+                      <p className="pt-2 text-sm sm:text-base font-semibold text-black/80 leading-relaxed">
+                        <EditableText
+                          path={`performancePacks.${packIndex}.intro`}
+                          fallback={pack.intro}
+                          multiline
+                          className="block w-full"
+                        />
+                      </p>
+                    ) : null}
+                    <ul className="pt-2 space-y-2.5 sm:space-y-3 flex-1">
+                      {pack.bullets.map((f, i) => (
+                        <li key={`${packIndex}-${i}`} className="flex items-start gap-2.5 text-base sm:text-sm font-semibold text-black/90">
+                          <span style={{ color: '#16a34a' }} className="mt-0.5 shrink-0"><CheckMark /></span>
+                          <EditableText path={`performancePacks.${packIndex}.bullets.${i}`} fallback={f} className="min-w-0 flex-1" />
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="divide-y divide-black/10 flex-1">
-                    {MOVED_A_LA_CARTE_ADDONS.map((addon) => (
-                      <li key={addon.title} className="py-3 px-4 sm:px-5">
-                        <div className="flex items-baseline justify-between gap-3 mb-1">
-                          <p className="text-sm sm:text-base font-black text-black leading-snug min-w-0">{addon.title}</p>
-                          <p className="text-base sm:text-lg font-black text-[#16a34a] leading-none shrink-0 tabular-nums">{addon.price}</p>
-                        </div>
-                        {addon.description ? (
-                          <p className="text-xs sm:text-sm font-semibold text-black/60 leading-snug">{addon.description}</p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="px-4 py-3 sm:px-5 border-t border-black/10 bg-[#fafafa]">
-                    <Link
-                      href="/add/ainsfw"
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-black uppercase tracking-wide text-black transition-transform hover:-translate-y-0.5"
+                  <PerformancePackValueBlock
+                    packIndex={packIndex}
+                    price={pack.price}
+                    footerLines={pack.footerLines}
+                  />
+                  <div className="px-6 pb-6 sm:px-8 sm:pb-8 pt-0 mt-auto">
+                    <a
+                      href="mailto:isabella@erogram.biz?subject=Performance%20Package%20Inquiry"
+                      className="block w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
                       style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
                     >
-                      Submit AINSFW
-                    </Link>
+                      Contact us for details
+                    </a>
                   </div>
                 </div>
-              </section>
-
-              {/* STARTUP (enterprise) */}
-              <div
-                className="relative flex flex-col overflow-hidden min-w-0 h-full"
-                style={{ background: PLAN_HEADER_BG, border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}` }}
-              >
-                <div className="px-6 py-6 sm:px-8 sm:py-8 flex flex-col flex-1 space-y-2 sm:space-y-2.5">
-                  <h2 className="font-black uppercase leading-none tracking-tight text-[4rem] sm:text-[4.5rem] lg:text-[5rem] text-white">SCALE</h2>
-                  <p className="text-lg sm:text-xl font-black uppercase tracking-wide text-white/50">Maximum Exposure</p>
-                  <p className="text-base sm:text-lg text-white/60 leading-snug pt-1">
-                    For companies that want the highest visibility across <BrandX />.
-                    {' '}You get placements across our highest-traffic pages and placements (Banners, Menu links, Intergrated ads)
-                  </p>
-                  <div className="pt-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#4ade80] mb-2">Top tier packages</p>
-                    <div className="space-y-2">
-                      <div
-                        className="bg-white rounded-md px-3 py-2.5 sm:px-4 flex items-center justify-between gap-3"
-                        style={{ border: BORDER, boxShadow: SHADOW }}
-                      >
-                        <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-tight min-w-0">
-                          20.000 Clicks / Month
-                        </p>
-                        <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$1800</p>
-                      </div>
-                      <div
-                        className="bg-white rounded-md px-3 py-2.5 sm:px-4"
-                        style={{ border: BORDER, boxShadow: SHADOW }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-black leading-tight min-w-0">
-                            60.000 Clicks / Month
-                          </p>
-                          <p className="text-base sm:text-lg font-black text-[#16a34a] tabular-nums shrink-0 leading-none">$3000</p>
-                        </div>
-                        <p className="text-[10px] sm:text-[11px] font-semibold text-black/45 leading-snug mt-1.5">
-                          Availability depends on our inventory
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <ul className="pt-2 space-y-2.5 sm:space-y-3 flex-1">
-                    {[
-                      'Display banners & video advertising',
-                      'Placement across our highest-traffic pages',
-                      'A/B testing of headlines, creatives & messaging',
-                      'Campaign analytics & reporting',
-                      'Custom campaign strategy',
-                      'Dedicated account support',
-                    ].map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-base sm:text-sm font-semibold text-white/90">
-                        <span style={{ color: '#34d399' }} className="mt-0.5 shrink-0"><CheckMark /></span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="px-6 pb-6 sm:px-8 sm:pb-8 pt-0 mt-auto">
-                  <a
-                    href="mailto:isabella@erogram.biz?subject=Startup%20Package%20Inquiry"
-                    className="block w-full py-4 text-lg sm:text-base font-black uppercase tracking-widest text-center text-black transition-all hover:opacity-95 active:translate-x-[2px] active:translate-y-[2px]"
-                    style={{ background: CTA, border: BORDER, boxShadow: SHADOW }}
-                  >
-                    Contact us for details
-                  </a>
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
+            <div className="mt-6 overflow-hidden rounded-lg bg-white" style={{ border: `3px solid ${ACCENT}`, boxShadow: `6px 6px 0px ${ACCENT}` }}>
+              <TrustedByLeaders
+                variant="green"
+                embedded
+                whiteBg
+                compact
+                sponsors={MEDIKIT_TRUSTED_SPONSORS}
+                titleClassName="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-[#064e3b] mb-2"
+              />
+            </div>
+          </section>
+        </div>
 
-          <InFeedAdFormatComparison />
-
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 pb-10">
           <ErogramDiscoveryBanner embedded />
 
           <section className="mt-8 mb-10 max-w-3xl mx-auto">
-            <h2 className="text-xl sm:text-2xl font-black mb-6 text-center text-white">Frequently Asked Questions</h2>
+            <h2 className="mb-6 text-center text-xl font-black uppercase tracking-tight text-white sm:text-2xl md:text-3xl">Frequently asked questions</h2>
             <div className="space-y-3">
-              {PROMO_FAQ.map((faq, i) => (
+              <SubmitFaqItems borderClass="border border-[#22c55e]/15 bg-[#0a1f12]" />
+              {content.faq.map((faq, i) => (
                 <details
                   key={i}
                   className="group rounded-xl overflow-hidden border border-[#22c55e]/15 bg-[#0a1f12]"
                 >
                   <summary className="flex items-center justify-between gap-4 cursor-pointer px-5 py-4 text-white font-semibold text-base sm:text-base list-none [&::-webkit-details-marker]:hidden">
-                    <span>{faq.q}</span>
+                    <EditableText path={`faq.${i}.q`} fallback={faq.q} className="text-left" />
                     <svg className="w-5 h-5 sm:w-4 sm:h-4 shrink-0 text-white/50 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
                   </summary>
-                  <div className="px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed">{faq.a}</div>
+                  <div className="px-5 pb-5 text-white/70 text-base sm:text-sm leading-relaxed whitespace-pre-line">
+                    {faq.a.includes('checkout page') ? (
+                      <FaqPlainAnswer text={faq.a} linkClassName="font-black text-[#4ade80] underline" />
+                    ) : (
+                      <EditableText path={`faq.${i}.a`} fallback={faq.a} multiline className="block w-full text-white/70" />
+                    )}
+                    {faq.q.includes('SEO benefits from Erogram') ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src="/assets/promo/mediakit-ga4-rebrand-impact.png?hq=3"
+                        alt="Google Analytics trend of event count after Erogram migration"
+                        width={807}
+                        height={1024}
+                        className="mt-4 block h-auto w-full max-w-md rounded-md"
+                      />
+                    ) : null}
+                  </div>
                 </details>
               ))}
             </div>
@@ -459,5 +344,27 @@ export default function MediaKitClient({
 
         <Footer />
       </div>
+  );
+}
+
+export default function MediaKitClient({
+  aiNsfwCount,
+  groupsAndBotsCount,
+  totalUsers,
+  mediaKitContent,
+}: {
+  aiNsfwCount: number;
+  groupsAndBotsCount: number;
+  totalUsers: number;
+  mediaKitContent: MediaKitContent;
+}) {
+  return (
+    <MediaKitEditProvider initialContent={mediaKitContent}>
+      <MediaKitBody
+        aiNsfwCount={aiNsfwCount}
+        groupsAndBotsCount={groupsAndBotsCount}
+        totalUsers={totalUsers}
+      />
+    </MediaKitEditProvider>
   );
 }

@@ -28,6 +28,8 @@ interface TopAINsfwBlockProps {
   heading?: string;
   showGetFeatured?: boolean;
   listingHref?: (slug: string) => string;
+  /** Homepage featured row only. Cards open the outside website. */
+  outboundCta?: boolean;
   tone?: 'green' | 'red' | 'gold';
   badge?: string;
   allowEmpty?: boolean;
@@ -45,6 +47,7 @@ export default function TopAINsfwBlock({
   verifiedSlugs = [],
   heading,
   listingHref,
+  outboundCta = false,
   tone = 'green',
   badge,
   allowEmpty = false,
@@ -72,7 +75,7 @@ export default function TopAINsfwBlock({
   const shell = tone === 'red'
     ? 'border-2 border-[#c0392f]/80 bg-gradient-to-b from-[#7a1f1a] via-[#2a0c0c] to-[#140404] shadow-[0_0_36px_-8px_rgba(192,57,47,0.55)]'
     : tone === 'gold'
-    ? 'border border-black/10 bg-white shadow-[0_8px_24px_-16px_rgba(0,0,0,0.35)]'
+    ? 'border-2 border-[#22c55e]/70 bg-gradient-to-b from-[#166534] via-[#0c2e1a] to-[#07180f] shadow-[0_0_36px_-8px_rgba(34,197,94,0.45)]'
     : 'border-2 border-[#22c55e]/80 bg-gradient-to-b from-[#166534] via-[#0c2e1a] to-[#07180f] shadow-[0_0_36px_-8px_rgba(34,197,94,0.65)]';
   const featuredLabelCls = tone === 'gold'
     ? 'text-[#1a0f00]'
@@ -111,6 +114,7 @@ export default function TopAINsfwBlock({
               verified={verifiedSet.has(tool.slug)}
               spotlight
               hubCta
+              outboundCta={outboundCta}
               compact={compactCards}
               listingHref={listingHref?.(tool.slug)}
             />

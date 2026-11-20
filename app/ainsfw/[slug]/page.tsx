@@ -11,6 +11,7 @@ import ToolDetailClient from '@/app/ainsfw/[slug]/ToolDetailClient';
 import { getFullReview, getVerifiedSlugs, isPaidClientTool } from '@/app/ainsfw/fullReviews';
 import { getListingBlocks } from '@/app/ainsfw/listingBlocks';
 import { getToolStats, getAllToolStats, getApprovedSubmissions } from '@/lib/actions/ainsfw';
+import { getAinsfwTrending } from '@/lib/actions/ainsfwTrending';
 import { getActiveCampaigns, getPlacementFeedCampaigns } from '@/lib/actions/campaigns';
 import { resolveFeaturedHubSlugs } from '@/lib/ainsfw/featuredHub';
 import { getPopulatedHubCategories, mergeCategoryPageTools } from '@/lib/ainsfw/categoryListings';
@@ -170,10 +171,11 @@ export default async function AINsfwToolPage({ params }: PageProps) {
   const category = getCategoryBySlug(slug);
   if (category) {
     const staticSlugs = new Set(AI_NSFW_TOOLS.map((t) => t.slug));
-    const [allPaidSubmissions, topAdCampaigns, topBannerCampaigns] = await Promise.all([
+    const [allPaidSubmissions, topAdCampaigns, topBannerCampaigns, trendingTools] = await Promise.all([
       getApprovedSubmissions(),
       getPlacementFeedCampaigns('ainsfw-featured', 4).catch(() => []),
       getActiveCampaigns('top-banner', { page: 'ainsfw-page' }).catch(() => []),
+      getAinsfwTrending(),
     ]);
     const placementSlugs = [...AI_NSFW_TOOLS, ...allPaidSubmissions].map((t) => t.slug);
     const placementStats = await getAllToolStats(placementSlugs);
@@ -220,6 +222,7 @@ export default async function AINsfwToolPage({ params }: PageProps) {
         verifiedSlugs={verifiedSlugs}
         topAdCampaigns={topAdCampaigns}
         topBannerCampaigns={topBannerCampaigns}
+        trendingTools={trendingTools}
       />
     );
   }

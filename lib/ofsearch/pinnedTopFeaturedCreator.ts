@@ -40,6 +40,7 @@ function resolveOutboundUrl(
 
 /** Victoria (HOME_FEATURED_OF_USERNAME) — single source for top-slot OF featured ads. */
 export async function getPinnedTopFeaturedOfCreator(): Promise<TopOfFeaturedCreator | null> {
+  return null;
   try {
     await connectDB();
     const username = HOME_FEATURED_OF_USERNAME;
